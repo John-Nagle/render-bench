@@ -17,8 +17,8 @@ use rend3::{
     Renderer, RendererProfile,
 };
 use rend3_framework::{lock, Mutex};
-use rend3_routine::{base::BaseRenderGraph, pbr::NormalTextureYDirection, skybox::SkyboxRoutine};
-use std::{collections::HashMap, future::Future, hash::BuildHasher, path::Path, sync::Arc, time::Duration};
+use rend3_routine::{base::BaseRenderGraph, skybox::SkyboxRoutine};
+use std::{collections::HashMap, hash::BuildHasher, path::Path, sync::Arc, time::Duration};
 use wgpu_profiler::GpuTimerScopeResult;
 use winit::{
     event::{DeviceEvent, ElementState, Event, KeyboardInput, MouseButton, WindowEvent},
@@ -27,49 +27,7 @@ use winit::{
 use anyhow::{Error, Context, anyhow};
 
 use super::platform;
-/*
 
-async fn load_skybox_image(loader: &rend3_framework::AssetLoader, data: &mut Vec<u8>, path: &str) {
-    let decoded = image::load_from_memory(
-        &loader
-            .get_asset(AssetPath::Internal(path))
-            .await
-            .unwrap_or_else(|e| panic!("Error {}: {}", path, e)),
-    )
-    .unwrap()
-    .into_rgba8();
-
-    data.extend_from_slice(decoded.as_raw());
-}
-
-async fn load_skybox(
-    renderer: &Renderer,
-    loader: &rend3_framework::AssetLoader,
-    skybox_routine: &Mutex<SkyboxRoutine>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    println!("Entered load skybox."); // ***TEMP TEST***
-    let mut data = Vec::new();
-    load_skybox_image(loader, &mut data, "skybox/right.jpg").await;
-    load_skybox_image(loader, &mut data, "skybox/left.jpg").await;
-    load_skybox_image(loader, &mut data, "skybox/top.jpg").await;
-    load_skybox_image(loader, &mut data, "skybox/bottom.jpg").await;
-    load_skybox_image(loader, &mut data, "skybox/front.jpg").await;
-    load_skybox_image(loader, &mut data, "skybox/back.jpg").await;
-    println!("Loaded skybox images."); // ***TEMP TEST***
-    let handle = renderer.add_texture_cube(Texture {
-        format: TextureFormat::Rgba8UnormSrgb,
-        size: UVec2::new(2048, 2048),
-        data,
-        label: Some("background".into()),
-        mip_count: rend3::types::MipmapCount::ONE,
-        mip_source: rend3::types::MipmapSource::Uploaded,
-    });
-    println!("Added texture cube."); // ***TEMP TEST***
-    lock(skybox_routine).set_background_texture(Some(handle));
-    println!("Skybox loaded."); // ***TEMP TEST***
-    Ok(())
-}
-*/
 
 /// Load all faces of a skybox image. Output bytes as one big RGBA-ordered image.
 fn load_skybox_images(prefix: &str, filenames: &[&str]) -> Result<((u32, u32), Vec<u8>), Error> { 
@@ -121,69 +79,6 @@ fn load_skybox(
     Ok(())
 }
 
-/*
-async fn load_gltf(
-    renderer: &Renderer,
-    loader: &rend3_framework::AssetLoader,
-    settings: &rend3_gltf::GltfLoadSettings,
-    location: AssetPath<'_>,
-) -> Option<(rend3_gltf::LoadedGltfScene, GltfSceneInstance)> {
-    // profiling::scope!("loading gltf");
-    let gltf_start = Instant::now();
-    let is_default_scene = matches!(location, AssetPath::Internal(_));
-    let path = loader.get_asset_path(location);
-    let path = Path::new(&*path);
-    let parent = path.parent().unwrap();
-
-    let parent_str = parent.to_string_lossy();
-    let path_str = path.as_os_str().to_string_lossy();
-    log::info!("Reading gltf file: {}", path_str);
-    let gltf_data_result = loader.get_asset(AssetPath::External(&path_str)).await;
-
-    let gltf_data = match gltf_data_result {
-        Ok(d) => d,
-        Err(_) if is_default_scene => {
-            let suffix = if cfg!(target_os = "windows") { ".exe" } else { "" };
-
-            indoc::eprintdoc!("
-                *** WARNING ***
-
-                It appears you are running scene-viewer with no file to display.
-                
-                The default scene is no longer bundled into the repository. If you are running on git, use the following commands
-                to download and unzip it into the right place. If you're running it through not-git, pass a custom folder to the -C argument
-                to tar, then run scene-viewer path/to/scene.gltf.
-                
-                curl{0} https://cdn.cwfitz.com/scenes/rend3-default-scene.tar -o ./examples/scene-viewer/resources/rend3-default-scene.tar
-                tar{0} xf ./examples/scene-viewer/resources/rend3-default-scene.tar -C ./examples/scene-viewer/resources
-
-                ***************
-            ", suffix);
-
-            return None;
-        }
-        e => e.unwrap(),
-    };
-
-    let gltf_elapsed = gltf_start.elapsed();
-    let resources_start = Instant::now();
-    let (scene, instance) = rend3_gltf::load_gltf(renderer, &gltf_data, settings, |uri| async {
-        log::info!("Loading resource {}", uri);
-        let uri = uri;
-        let full_uri = parent_str.clone() + "/" + uri.as_str();
-        loader.get_asset(AssetPath::External(&full_uri)).await
-    })
-    .await
-    .unwrap();
-
-    log::info!(
-        "Loaded gltf in {:.3?}, resources loaded in {:.3?}",
-        gltf_elapsed,
-        resources_start.elapsed()
-    );
-    Some((scene, instance))
-}
-*/
 fn button_pressed<Hash: BuildHasher>(map: &HashMap<u32, bool, Hash>, key: u32) -> bool {
     map.get(&key).map_or(false, |b| *b)
 }
@@ -249,32 +144,12 @@ fn option_arg<T>(result: Result<Option<T>, pico_args::Error>) -> Option<T> {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-pub fn spawn<Fut>(fut: Fut)
-where
-    Fut: Future + Send + 'static,
-    Fut::Output: Send + 'static,
-{
-    std::thread::spawn(|| pollster::block_on(fut));
-}
-
-#[cfg(target_arch = "wasm32")]
-pub fn spawn<Fut>(fut: Fut)
-where
-    Fut: Future + 'static,
-    Fut::Output: 'static,
-{
-    wasm_bindgen_futures::spawn_local(async move {
-        fut.await;
-    });
-}
-
 const HELP: &str = "\
-scene-viewer
+render-bench
 
-gltf and glb scene viewer powered by the rend3 rendering library.
+Exercise Rend3 and WGPU with a complex, changing scene.
 
-usage: scene-viewer --options ./path/to/gltf/file.gltf
+usage: render-bench --options 
 
 Meta:
   --help            This menu.
@@ -293,10 +168,9 @@ Assets:
   --normal-y-down                        Interpret all normals as having the DirectX convention of Y down. Defaults to Y up.
   --directional-light <x,y,z>            Create a directional light pointing towards the given coordinates.
   --directional-light-intensity <value>  All lights created by the above flag have this intensity. Defaults to 4.
-  --gltf-disable-directional-lights      Disable all directional lights in the gltf
   --ambient <value>                      Set the value of the minimum ambient light. This will be treated as white light of this intensity. Defaults to 0.1.
   --scale <scale>                        Scale all objects loaded by this factor. Defaults to 1.0.
-  --shadow-distance <value>              Distance from the camera there will be directional shadows. Lower values means higher quality shadows. Defaults to 100.
+  --shadow-distance <value>              Distance from the camera there will be directional shadows. Lower values means higher quality shadows. Defaults to 300.
 
 Controls:
   --walk <speed>               Walk speed (speed without holding shift) in units/second (typically meters). Default 10.
@@ -308,10 +182,8 @@ struct SceneViewer {
     desired_backend: Option<Backend>,
     desired_device_name: Option<String>,
     desired_profile: Option<RendererProfile>,
-    ////file_to_load: Option<String>,
     walk_speed: f32,
     run_speed: f32,
-    ////gltf_settings: rend3_gltf::GltfLoadSettings,
     directional_light_direction: Option<Vec3>,
     directional_light_intensity: f32,
     directional_light: Option<DirectionalLightHandle>,
@@ -351,17 +223,10 @@ impl SceneViewer {
         let fullscreen = args.contains("--fullscreen");
 
         // Assets
-        let normal_direction = match args.contains("--normal-y-down") {
-            true => NormalTextureYDirection::Down,
-            false => NormalTextureYDirection::Up,
-        };
         let directional_light_direction = option_arg(args.opt_value_from_fn("--directional-light", extract_vec3));
         let directional_light_intensity: f32 =
             option_arg(args.opt_value_from_str("--directional-light-intensity")).unwrap_or(4.0);
         let ambient_light_level: f32 = option_arg(args.opt_value_from_str("--ambient")).unwrap_or(0.10);
-        let scale: Option<f32> = option_arg(args.opt_value_from_str("--scale"));
-        let shadow_distance: Option<f32> = option_arg(args.opt_value_from_str("--shadow-distance"));
-        let gltf_disable_directional_light: bool = args.contains("--gltf-disable-directional-lights");
 
         // Controls
         let walk_speed = args.value_from_str("--walk").unwrap_or(10.0_f32);
@@ -384,18 +249,6 @@ impl SceneViewer {
         if help {
             eprintln!("{}", HELP);
             std::process::exit(1);
-        }
-
-        let mut gltf_settings = rend3_gltf::GltfLoadSettings {
-            normal_direction,
-            enable_directional: !gltf_disable_directional_light,
-            ..Default::default()
-        };
-        if let Some(scale) = scale {
-            gltf_settings.scale = scale
-        }
-        if let Some(shadow_distance) = shadow_distance {
-            gltf_settings.directional_light_shadow_distance = shadow_distance;
         }
 
         Self {
@@ -484,31 +337,6 @@ impl rend3_framework::App for SceneViewer {
         let renderer = Arc::clone(renderer);
         let routines = Arc::clone(routines);
         load_skybox(&renderer, &routines.skybox).unwrap(); // load the background skybox
-        /*
-        spawn(async move {
-            let loader = rend3_framework::AssetLoader::new_local(
-                concat!(env!("CARGO_MANIFEST_DIR"), "/resources/"),
-                "",
-                "http://localhost:8000/resources/",
-            );
-            if let Err(e) = load_skybox(&renderer, &loader, &routines.skybox).await {
-                println!("Failed to load skybox {}", e)
-            };
-            /*
-            Box::leak(Box::new(
-                load_gltf(
-                    &renderer,
-                    &loader,
-                    &gltf_settings,
-                    file_to_load
-                        .as_deref()
-                        .map_or_else(|| AssetPath::Internal("default-scene/scene.gltf"), AssetPath::External),
-                )
-                .await,
-            ));
-            */
-        });
-        */
     }
 
     fn handle_event(
@@ -734,7 +562,7 @@ impl rend3_framework::App for SceneViewer {
 pub fn viewer() {
     let app = SceneViewer::new();
 
-    let mut builder = WindowBuilder::new().with_title("scene-viewer").with_maximized(true);
+    let mut builder = WindowBuilder::new().with_title("render-bench").with_maximized(true);
     if app.fullscreen {
         builder = builder.with_fullscreen(Some(Fullscreen::Borderless(None)));
     }

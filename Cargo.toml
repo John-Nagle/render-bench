@@ -20,7 +20,6 @@ profiling = { version = "1", default-features = false }
 #   Using pinned version of Rend3 0.3 Unreleased because the API changed from 0.2 and 0.3 isn't released yet.
 rend3 = { git = 'https://github.com/BVE-Reborn/rend3.git', rev= "f2b7df4775919a0fc766e3a5718d8b4bba38bc28" }
 rend3-routine = { git = 'https://github.com/BVE-Reborn/rend3.git', rev= "f2b7df4775919a0fc766e3a5718d8b4bba38bc28" }
-rend3-gltf = { git = 'https://github.com/BVE-Reborn/rend3.git', rev= "f2b7df4775919a0fc766e3a5718d8b4bba38bc28" }
 rend3-framework = { git = 'https://github.com/BVE-Reborn/rend3.git', rev= "f2b7df4775919a0fc766e3a5718d8b4bba38bc28" }
 rustc-hash = "1"
 smallvec = "1"
