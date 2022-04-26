@@ -5,67 +5,75 @@
 //
 //  Threaded targets only - no Android.
 //
+use anyhow::{anyhow, Context, Error};
 use glam::{DVec2, Mat3A, Mat4, UVec2, Vec3, Vec3A};
-use std::time::Instant;
 use pico_args::Arguments;
 use rend3::{
     types::{
-        Backend, Camera, CameraProjection, DirectionalLight, DirectionalLightHandle, SampleCount, Texture,
-        TextureFormat,
+        Backend, Camera, CameraProjection, DirectionalLight, DirectionalLightHandle, SampleCount,
+        Texture, TextureFormat,
     },
     util::typedefs::FastHashMap,
     Renderer, RendererProfile,
 };
 use rend3_framework::{lock, Mutex};
 use rend3_routine::{base::BaseRenderGraph, skybox::SkyboxRoutine};
+use std::time::Instant;
 use std::{collections::HashMap, hash::BuildHasher, path::Path, sync::Arc, time::Duration};
 use wgpu_profiler::GpuTimerScopeResult;
 use winit::{
     event::{DeviceEvent, ElementState, Event, KeyboardInput, MouseButton, WindowEvent},
     window::{Fullscreen, WindowBuilder},
 };
-use anyhow::{Error, Context, anyhow};
 
 use super::platform;
 
-
 /// Load all faces of a skybox image. Output bytes as one big RGBA-ordered image.
-fn load_skybox_images(prefix: &str, filenames: &[&str]) -> Result<((u32, u32), Vec<u8>), Error> { 
+fn load_skybox_images(prefix: &str, filenames: &[&str]) -> Result<((u32, u32), Vec<u8>), Error> {
     use image::{EncodableLayout, GenericImageView};
-    let mut v = Vec::new();         // accum bytes
-    let mut dims: Option<(u32,u32)> = None; // size of objects
-    if filenames.len() != 6 { return Err(anyhow!("Skybox image set must have exactly 6 images")) }
+    let mut v = Vec::new(); // accum bytes
+    let mut dims: Option<(u32, u32)> = None; // size of objects
+    if filenames.len() != 6 {
+        return Err(anyhow!("Skybox image set must have exactly 6 images"));
+    }
     for filename in filenames {
         let full_pathname = format!("{}/{}", prefix, filename);
         println!("Skybox file: {}", full_pathname); // ***TEMP***
-        let img = image::open(&full_pathname).with_context(|| format!("Skybox file {}", full_pathname))?;
+        let img = image::open(&full_pathname)
+            .with_context(|| format!("Skybox file {}", full_pathname))?;
         //  Check that all images have the same dimensions
         match dims {
-            Some(dims) => { if img.dimensions() != dims { return Err(anyhow!("Skybox image {} is {:?} but others are {:?}", 
-                filename, img.dimensions(), dims));}
+            Some(dims) => {
+                if img.dimensions() != dims {
+                    return Err(anyhow!(
+                        "Skybox image {} is {:?} but others are {:?}",
+                        filename,
+                        img.dimensions(),
+                        dims
+                    ));
+                }
             }
-            None => { dims = Some(img.dimensions()); }
+            None => {
+                dims = Some(img.dimensions());
+            }
         }
-        v.extend_from_slice(img.to_rgba8().as_bytes());        // load image
+        v.extend_from_slice(img.to_rgba8().as_bytes()); // load image
     }
-    Ok((dims.unwrap(),v))
+    Ok((dims.unwrap(), v))
 }
 
 /// Load the skybox from individual images.
-fn load_skybox(
-    renderer: &Renderer,
-    skybox_routine: &Mutex<SkyboxRoutine>
-) -> Result<(), Error> {
-    let prefix = concat!(env!("CARGO_MANIFEST_DIR"), "/resources/skybox");    // filename prefix
-    let skybox_files: [&str;6] = [
+fn load_skybox(renderer: &Renderer, skybox_routine: &Mutex<SkyboxRoutine>) -> Result<(), Error> {
+    let prefix = concat!(env!("CARGO_MANIFEST_DIR"), "/resources/skybox"); // filename prefix
+    let skybox_files: [&str; 6] = [
         "right.jpg",
         "left.jpg",
         "top.jpg",
         "bottom.jpg",
         "front.jpg",
-        "back.jpg"
+        "back.jpg",
     ];
-    let (dims, image) = load_skybox_images(prefix, &skybox_files)?;   // Combine into one big texture
+    let (dims, image) = load_skybox_images(prefix, &skybox_files)?; // Combine into one big texture
     let handle = renderer.add_texture_cube(Texture {
         format: TextureFormat::Rgba8UnormSrgb,
         size: UVec2::new(dims.0, dims.1),
@@ -212,21 +220,26 @@ impl SceneViewer {
         let help = args.contains(["-h", "--help"]);
 
         // Rendering
-        let desired_backend = option_arg(args.opt_value_from_fn(["-b", "--backend"], extract_backend));
+        let desired_backend =
+            option_arg(args.opt_value_from_fn(["-b", "--backend"], extract_backend));
         let desired_device_name: Option<String> =
-            option_arg(args.opt_value_from_str(["-d", "--device"])).map(|s: String| s.to_lowercase());
+            option_arg(args.opt_value_from_str(["-d", "--device"]))
+                .map(|s: String| s.to_lowercase());
         let desired_mode = option_arg(args.opt_value_from_fn(["-p", "--profile"], extract_mode));
-        let samples = option_arg(args.opt_value_from_fn("--msaa", extract_msaa)).unwrap_or(SampleCount::One);
+        let samples =
+            option_arg(args.opt_value_from_fn("--msaa", extract_msaa)).unwrap_or(SampleCount::One);
 
         // Windowing
         let absolute_mouse: bool = args.contains("--absolute-mouse");
         let fullscreen = args.contains("--fullscreen");
 
         // Assets
-        let directional_light_direction = option_arg(args.opt_value_from_fn("--directional-light", extract_vec3));
+        let directional_light_direction =
+            option_arg(args.opt_value_from_fn("--directional-light", extract_vec3));
         let directional_light_intensity: f32 =
             option_arg(args.opt_value_from_str("--directional-light-intensity")).unwrap_or(4.0);
-        let ambient_light_level: f32 = option_arg(args.opt_value_from_str("--ambient")).unwrap_or(0.10);
+        let ambient_light_level: f32 =
+            option_arg(args.opt_value_from_str("--ambient")).unwrap_or(0.10);
 
         // Controls
         let walk_speed = args.value_from_str("--walk").unwrap_or(10.0_f32);
@@ -258,7 +271,7 @@ impl SceneViewer {
             desired_profile: desired_mode,
             walk_speed,
             run_speed,
-	            directional_light_direction,
+            directional_light_direction,
             directional_light_intensity,
             directional_light: None,
             ambient_light_level,
@@ -285,7 +298,9 @@ impl rend3_framework::App for SceneViewer {
 
     fn create_iad<'a>(
         &'a mut self,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = anyhow::Result<rend3::InstanceAdapterDevice>> + 'a>> {
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = anyhow::Result<rend3::InstanceAdapterDevice>> + 'a>,
+    > {
         Box::pin(async move {
             Ok(rend3::create_iad(
                 self.desired_backend,
@@ -332,8 +347,6 @@ impl rend3_framework::App for SceneViewer {
             }));
         }
 
-        ////let gltf_settings = self.gltf_settings;
-        ////let file_to_load = self.file_to_load.take();
         let renderer = Arc::clone(renderer);
         let routines = Arc::clone(routines);
         load_skybox(&renderer, &routines.skybox).unwrap(); // load the background skybox
@@ -356,7 +369,9 @@ impl rend3_framework::App for SceneViewer {
                 let now = Instant::now();
 
                 let delta_time = now - self.timestamp_last_frame;
-                self.frame_times.increment(delta_time.as_micros() as u64).unwrap();
+                self.frame_times
+                    .increment(delta_time.as_micros() as u64)
+                    .unwrap();
 
                 let elapsed_since_second = now - self.timestamp_last_second;
                 if elapsed_since_second > Duration::from_secs(1) {
@@ -384,12 +399,18 @@ impl rend3_framework::App for SceneViewer {
 
                 self.timestamp_last_frame = now;
 
-                let rotation =
-                    Mat3A::from_euler(glam::EulerRot::XYZ, -self.camera_pitch, -self.camera_yaw, 0.0).transpose();
+                let rotation = Mat3A::from_euler(
+                    glam::EulerRot::XYZ,
+                    -self.camera_pitch,
+                    -self.camera_yaw,
+                    0.0,
+                )
+                .transpose();
                 let forward = -rotation.z_axis;
                 let up = rotation.y_axis;
                 let side = -rotation.x_axis;
-                let velocity = if button_pressed(&self.scancode_status, platform::Scancodes::SHIFT) {
+                let velocity = if button_pressed(&self.scancode_status, platform::Scancodes::SHIFT)
+                {
                     self.run_speed
                 } else {
                     self.walk_speed
@@ -419,7 +440,11 @@ impl rend3_framework::App for SceneViewer {
                     // write out gpu side performance info into a trace readable by chrome://tracing
                     if let Some(ref stats) = self.previous_profiling_stats {
                         println!("Outputing gpu timing chrome trace to profile.json");
-                        wgpu_profiler::chrometrace::write_chrometrace(Path::new("profile.json"), stats).unwrap();
+                        wgpu_profiler::chrometrace::write_chrometrace(
+                            Path::new("profile.json"),
+                            stats,
+                        )
+                        .unwrap();
                     } else {
                         println!("No gpu timing trace available, either timestamp queries are unsupported or not enough frames have elapsed yet!");
                     }
@@ -428,11 +453,19 @@ impl rend3_framework::App for SceneViewer {
                 window.request_redraw()
             }
             Event::RedrawRequested(_) => {
-                let view = Mat4::from_euler(glam::EulerRot::XYZ, -self.camera_pitch, -self.camera_yaw, 0.0);
+                let view = Mat4::from_euler(
+                    glam::EulerRot::XYZ,
+                    -self.camera_pitch,
+                    -self.camera_yaw,
+                    0.0,
+                );
                 let view = view * Mat4::from_translation((-self.camera_location).into());
 
                 renderer.set_camera_data(Camera {
-                    projection: CameraProjection::Perspective { vfov: 60.0, near: 0.1 },
+                    projection: CameraProjection::Perspective {
+                        vfov: 60.0,
+                        near: 0.1,
+                    },
                     view,
                 });
 
@@ -481,7 +514,10 @@ impl rend3_framework::App for SceneViewer {
             Event::WindowEvent {
                 event:
                     WindowEvent::KeyboardInput {
-                        input: KeyboardInput { scancode, state, .. },
+                        input:
+                            KeyboardInput {
+                                scancode, state, ..
+                            },
                         ..
                     },
                 ..
@@ -558,11 +594,16 @@ impl rend3_framework::App for SceneViewer {
     }
 }
 
-#[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on", logger(level = "debug")))]
+#[cfg_attr(
+    target_os = "android",
+    ndk_glue::main(backtrace = "on", logger(level = "debug"))
+)]
 pub fn viewer() {
     let app = SceneViewer::new();
 
-    let mut builder = WindowBuilder::new().with_title("render-bench").with_maximized(true);
+    let mut builder = WindowBuilder::new()
+        .with_title("render-bench")
+        .with_maximized(true);
     if app.fullscreen {
         builder = builder.with_fullscreen(Some(Fullscreen::Borderless(None)));
     }
