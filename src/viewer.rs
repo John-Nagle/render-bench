@@ -16,7 +16,7 @@ use rend3::{
     util::typedefs::FastHashMap,
     Renderer, RendererProfile,
 };
-use rend3_framework::{lock, AssetPath, Mutex};
+use rend3_framework::{lock, Mutex};
 use rend3_routine::{base::BaseRenderGraph, pbr::NormalTextureYDirection, skybox::SkyboxRoutine};
 use std::{collections::HashMap, future::Future, hash::BuildHasher, path::Path, sync::Arc, time::Duration};
 use wgpu_profiler::GpuTimerScopeResult;
@@ -24,8 +24,10 @@ use winit::{
     event::{DeviceEvent, ElementState, Event, KeyboardInput, MouseButton, WindowEvent},
     window::{Fullscreen, WindowBuilder},
 };
+use anyhow::{Error, Context, anyhow};
 
 use super::platform;
+/*
 
 async fn load_skybox_image(loader: &rend3_framework::AssetLoader, data: &mut Vec<u8>, path: &str) {
     let decoded = image::load_from_memory(
@@ -45,6 +47,7 @@ async fn load_skybox(
     loader: &rend3_framework::AssetLoader,
     skybox_routine: &Mutex<SkyboxRoutine>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Entered load skybox."); // ***TEMP TEST***
     let mut data = Vec::new();
     load_skybox_image(loader, &mut data, "skybox/right.jpg").await;
     load_skybox_image(loader, &mut data, "skybox/left.jpg").await;
@@ -52,7 +55,7 @@ async fn load_skybox(
     load_skybox_image(loader, &mut data, "skybox/bottom.jpg").await;
     load_skybox_image(loader, &mut data, "skybox/front.jpg").await;
     load_skybox_image(loader, &mut data, "skybox/back.jpg").await;
-
+    println!("Loaded skybox images."); // ***TEMP TEST***
     let handle = renderer.add_texture_cube(Texture {
         format: TextureFormat::Rgba8UnormSrgb,
         size: UVec2::new(2048, 2048),
@@ -61,9 +64,63 @@ async fn load_skybox(
         mip_count: rend3::types::MipmapCount::ONE,
         mip_source: rend3::types::MipmapSource::Uploaded,
     });
+    println!("Added texture cube."); // ***TEMP TEST***
     lock(skybox_routine).set_background_texture(Some(handle));
+    println!("Skybox loaded."); // ***TEMP TEST***
     Ok(())
 }
+*/
+
+/// Load all faces of a skybox image. Output bytes as one big RGBA-ordered image.
+fn load_skybox_images(prefix: &str, filenames: &[&str]) -> Result<((u32, u32), Vec<u8>), Error> { 
+    use image::{EncodableLayout, GenericImageView};
+    let mut v = Vec::new();         // accum bytes
+    let mut dims: Option<(u32,u32)> = None; // size of objects
+    if filenames.len() != 6 { return Err(anyhow!("Skybox image set must have exactly 6 images")) }
+    for filename in filenames {
+        let full_pathname = format!("{}/{}", prefix, filename);
+        println!("Skybox file: {}", full_pathname); // ***TEMP***
+        let img = image::open(&full_pathname).with_context(|| format!("Skybox file {}", full_pathname))?;
+        //  Check that all images have the same dimensions
+        match dims {
+            Some(dims) => { if img.dimensions() != dims { return Err(anyhow!("Skybox image {} is {:?} but others are {:?}", 
+                filename, img.dimensions(), dims));}
+            }
+            None => { dims = Some(img.dimensions()); }
+        }
+        v.extend_from_slice(img.to_rgba8().as_bytes());        // load image
+    }
+    Ok((dims.unwrap(),v))
+}
+
+/// Load the skybox from individual images.
+fn load_skybox(
+    renderer: &Renderer,
+    skybox_routine: &Mutex<SkyboxRoutine>
+) -> Result<(), Error> {
+    let prefix = concat!(env!("CARGO_MANIFEST_DIR"), "/resources/skybox");    // filename prefix
+    let skybox_files: [&str;6] = [
+        "right.jpg",
+        "left.jpg",
+        "top.jpg",
+        "bottom.jpg",
+        "front.jpg",
+        "back.jpg"
+    ];
+    let (dims, image) = load_skybox_images(prefix, &skybox_files)?;   // Combine into one big texture
+    let handle = renderer.add_texture_cube(Texture {
+        format: TextureFormat::Rgba8UnormSrgb,
+        size: UVec2::new(dims.0, dims.1),
+        data: image,
+        label: Some("background".into()),
+        mip_count: rend3::types::MipmapCount::ONE,
+        mip_source: rend3::types::MipmapSource::Uploaded,
+    });
+    //  Finally set skybox
+    skybox_routine.lock().set_background_texture(Some(handle));
+    Ok(())
+}
+
 /*
 async fn load_gltf(
     renderer: &Renderer,
@@ -251,10 +308,10 @@ struct SceneViewer {
     desired_backend: Option<Backend>,
     desired_device_name: Option<String>,
     desired_profile: Option<RendererProfile>,
-    file_to_load: Option<String>,
+    ////file_to_load: Option<String>,
     walk_speed: f32,
     run_speed: f32,
-    gltf_settings: rend3_gltf::GltfLoadSettings,
+    ////gltf_settings: rend3_gltf::GltfLoadSettings,
     directional_light_direction: Option<Vec3>,
     directional_light_intensity: f32,
     directional_light: Option<DirectionalLightHandle>,
@@ -311,8 +368,6 @@ impl SceneViewer {
         let run_speed = args.value_from_str("--run").unwrap_or(50.0_f32);
 
         // Free args
-        let file_to_load: Option<String> = args.free_from_str().ok();
-
         let remaining = args.finish();
 
         if !remaining.is_empty() {
@@ -348,11 +403,9 @@ impl SceneViewer {
             desired_backend,
             desired_device_name,
             desired_profile: desired_mode,
-            file_to_load,
             walk_speed,
             run_speed,
-            gltf_settings,
-            directional_light_direction,
+	            directional_light_direction,
             directional_light_intensity,
             directional_light: None,
             ambient_light_level,
@@ -416,19 +469,22 @@ impl rend3_framework::App for SceneViewer {
     ) {
         self.grabber = Some(rend3_framework::Grabber::new(window));
 
+        const SUN_SHADOW_DISTANCE: f32 = 300.0;
         if let Some(direction) = self.directional_light_direction {
             self.directional_light = Some(renderer.add_directional_light(DirectionalLight {
                 color: Vec3::splat(1.0),
                 intensity: self.directional_light_intensity,
                 direction,
-                distance: self.gltf_settings.directional_light_shadow_distance,
+                distance: SUN_SHADOW_DISTANCE,
             }));
         }
 
-        let gltf_settings = self.gltf_settings;
-        let file_to_load = self.file_to_load.take();
+        ////let gltf_settings = self.gltf_settings;
+        ////let file_to_load = self.file_to_load.take();
         let renderer = Arc::clone(renderer);
         let routines = Arc::clone(routines);
+        load_skybox(&renderer, &routines.skybox).unwrap(); // load the background skybox
+        /*
         spawn(async move {
             let loader = rend3_framework::AssetLoader::new_local(
                 concat!(env!("CARGO_MANIFEST_DIR"), "/resources/"),
@@ -452,6 +508,7 @@ impl rend3_framework::App for SceneViewer {
             ));
             */
         });
+        */
     }
 
     fn handle_event(
@@ -527,11 +584,9 @@ impl rend3_framework::App for SceneViewer {
                 if button_pressed(&self.scancode_status, platform::Scancodes::Z) {
                     self.camera_location -= up * velocity * delta_time.as_secs_f32();
                 }
-
                 if button_pressed(&self.scancode_status, platform::Scancodes::ESCAPE) {
                     self.grabber.as_mut().unwrap().request_ungrab(window);
                 }
-
                 if button_pressed(&self.scancode_status, platform::Scancodes::P) {
                     // write out gpu side performance info into a trace readable by chrome://tracing
                     if let Some(ref stats) = self.previous_profiling_stats {
