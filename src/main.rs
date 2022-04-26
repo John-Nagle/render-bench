@@ -1,3 +1,5 @@
+mod viewer;
+mod platform;
 fn main() {
-    println!("Hello, world!");
+    viewer::viewer();
 }
