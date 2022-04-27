@@ -2,10 +2,10 @@
 //
 //  Used for generating simple 3D scenes for benchmarking purposes.
 //
-use glam::{DVec2, Mat3A, Mat4, UVec2, Vec3, Vec3A, Quat};			
+use glam::{DVec2, Mat3A, Mat4, Vec2, UVec2, Vec3, Vec3A, Quat};			
 use rend3::{
     types::{
-        Backend, Camera, Mesh, MeshHandle, Material, MaterialHandle,
+        Backend, Camera, Mesh, MeshHandle, MeshBuilder, Material, MaterialHandle,
         Texture, TextureHandle, TextureFormat, Object, ObjectHandle
     },
     util::typedefs::FastHashMap,
@@ -35,33 +35,58 @@ fn create_block(
 }
 
 //  Create a mesh object with the appropriate scale and origin offset.
-pub fn create_mesh(scale: Vec3, offset: Vec3, texture_scale: f32, planar_mapping: bool) { //// 	-> Mesh {
-    
+pub fn create_mesh(scale: Vec3, offset: Vec3, texture_scale: f32) -> Mesh {    
     let mul_elements = |a: Vec3, b: Vec3| Vec3::new(a[0]*b[0], a[1]*b[1], a[2]*b[2]);    // why is this never built into vec libraries?
+    //  Scale and offset verts.
     let vertex_positions: Vec<Vec3> = UNIT_CUBE_VERTS.iter().map(|v| mul_elements(scale, (*v).into()) + offset).collect();
+    let normals: Vec<Vec3> = UNIT_CUBE_FACE_NORMALS.iter().map(|v| (*v).into()).collect();
+    let uvs = calc_uvs(&vertex_positions, &normals, texture_scale);
     //  Create UVs.
-    let vertex_uvs = if planar_mapping { 
-        panic!("Planar mapping unimplemented"); // no planar texture mapping yet
-    } else {
-        1
-    };
+    MeshBuilder::new(vertex_positions.to_vec(), rend3::types::Handedness::Left)
+        .with_indices(UNIT_CUBE_INDICES.to_vec())
+        .with_vertex_normals(normals)
+        .with_vertex_uv0(uvs)
+        .build()
+        .unwrap()
 }
 
-//  Calculate normals from triangles. Works for any mesh. Averages normals at shared vertices, if any.
-pub fn calc_normals(vertex_positions: &Vec<Vec3>, index_data: &Vec<i32>) -> Vec<Vec3> {
-    let mut normals: Vec<Vec3> = (0..vertex_positions.len()).map(|_| Vec3::new(0.0, 0.0, 0.0)).collect(); // Init normals
-    let tri_cross_from_pts = |v0: Vec3, v1: Vec3, v2: Vec3| (v1-v0).cross(v2-v0);   // normal of triangle
-    let tri_vertex = |n| vertex_positions[index_data[n as usize] as usize]; // vertex of triangle
-    for i in (0..index_data.len()).step_by(3) {   // iterate over triangles
-        let cross_product = tri_cross_from_pts(tri_vertex(i), tri_vertex(i+1), tri_vertex(i+2));         
-        let normal = cross_product.normalize();        // usual cross product appraoch
-        for j in i..i+3 {                               // add to relevant verts
-            normals[index_data[j] as usize] = normal;
-        }
+/// Dominant axis from normal. Just the longest direction.
+fn norm_to_axis(normal: &Vec3) -> u8 {
+    if normal[0].abs() > normal[1].abs() && normal[0].abs() > normal[2].abs() {
+        0   // X wins
+    } else if normal[1].abs() > normal[2].abs() {
+        1   // Y wins
+    } else {
+        2   // Z wins
     }
-    for mut item in &mut normals { *item = item.normalize() }            // final normalize
-    normals
+}
 
+///  Calculate planar UVs. This has to agree with how SL does it.
+fn calc_uv(axis: u8, vertex: &Vec3, normal: &Vec3) -> Vec2 {
+    match axis {
+        0 => calc_single_uv(Vec2::new(vertex[2], vertex[1]), normal[0]), // X normal wins, use Y and Z
+        1 => calc_single_uv(Vec2::new(vertex[0], vertex[2]), normal[1]), // Y normal wins, use X and Z
+        2 => calc_single_uv(Vec2::new(vertex[0], vertex[1]), -normal[2]), // Z normal wins, use X and Y, invert
+        _ => panic!("calc_planar_uv - axis invalid")                // no way
+    }
+}
+
+/// Calculate one UV value
+fn calc_single_uv(pos: Vec2, normal: f32) -> Vec2 {
+    //  Bounds are normally -0.5 .. 0.5, but they do not have to be.
+    //  We must rescale into that range.
+
+    let u = pos[0]; let v = pos[1];             // UVs
+    const MESH_UV_SCALE_FACTOR: f32 = 2.0;  // rescale vertex space to UV space
+    const MESH_UV_OFFSET: f32 = 0.25;       // offset because UVs are 0..1
+    let sign = |val: f32| if val.is_sign_negative() { -1.0 } else { 1.0 };
+    Vec2::new(u*sign(normal)+MESH_UV_OFFSET, v+MESH_UV_OFFSET) * MESH_UV_SCALE_FACTOR
+}
+
+/// Default UVs, scaled as mesh is scaled, so repetitive textures work.
+//  So this is a planar mapping. We can use it for bricks and such.
+fn calc_uvs(vertex_positions: &Vec<Vec3>, normals: &Vec<Vec3>, texture_scale: f32) -> Vec<Vec2> {
+    vertex_positions.iter().zip(normals).map(|(v, n)| calc_uv(norm_to_axis(n), v, &n)*texture_scale).collect()
 }
 
 //  The unit cube. No shared verts at corners.
@@ -97,16 +122,17 @@ const UNIT_CUBE_VERTS: [[f32;3];24] = [
         [-0.5, -0.5, -0.5],
         [0.5, -0.5, -0.5],
 ];
-/*
-const UNIT_CUBE_FACE_NORMALS: [Vec3;24] = [
-    Vec3::Z, Vec3::Z, Vec3::Z, Vec3::Z,
-    -Vec3::Z, -Vec3::Z, -Vec3::Z, -Vec3::Z,
-     Vec3::X, Vec3::X, Vec3::X, Vec3::X,
-    -Vec3::X, -Vec3::X, -Vec3::X, -Vec3::X,
-     Vec3::Y, Vec3::Y, Vec3::Y, Vec3::Y,
-    -Vec3::Y, -Vec3::Y, -Vec3::Y, -Vec3::Y
-    ];
-*/    
+    
+
+//  The usual face normals.
+const UNIT_CUBE_FACE_NORMALS: [[f32;3];24] = [
+    [0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0],
+    [0.0, 0.0, -1.0], [0.0, 0.0, -1.0], [0.0, 0.0, -1.0], [0.0, 0.0, -1.0],
+     [1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 0.0],
+    [-1.0, 0.0, 0.0], [-1.0, 0.0, 0.0], [-1.0, 0.0, 0.0], [-1.0, 0.0, 0.0],
+     [0.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 1.0, 0.0],
+    [0.0, -1.0, 0.0], [0.0, -1.0, 0.0], [0.0, -1.0, 0.0], [0.0, -1.0, 0.0]
+    ];   
     
 
 //  The triangles, 12 of them.
