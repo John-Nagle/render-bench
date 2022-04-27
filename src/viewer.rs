@@ -27,6 +27,7 @@ use winit::{
 };
 
 use super::platform;
+use super::citybuilder::{CityBuilder};
 
 /// Load all faces of a skybox image. Output bytes as one big RGBA-ordered image.
 fn load_skybox_images(prefix: &str, filenames: &[&str]) -> Result<((u32, u32), Vec<u8>), Error> {
@@ -186,6 +187,7 @@ Controls:
 ";
 
 struct SceneViewer {
+    //  Parameters
     absolute_mouse: bool,
     desired_backend: Option<Backend>,
     desired_device_name: Option<String>,
@@ -211,6 +213,10 @@ struct SceneViewer {
     last_mouse_delta: Option<DVec2>,
 
     grabber: Option<rend3_framework::Grabber>,
+    
+    //  Model
+    city_builder: CityBuilder,              // what we get to look at
+    
 }
 impl SceneViewer {
     pub fn new() -> Self {
@@ -258,6 +264,8 @@ impl SceneViewer {
             eprintln!("{}", HELP);
             std::process::exit(1);
         }
+        //  Model
+        let building_count = 1;         // ***TEMP***
 
         if help {
             eprintln!("{}", HELP);
@@ -290,6 +298,8 @@ impl SceneViewer {
             last_mouse_delta: None,
 
             grabber: None,
+            //  Model
+            city_builder: CityBuilder::new(building_count),               // our model
         }
     }
 }
@@ -350,6 +360,8 @@ impl rend3_framework::App for SceneViewer {
         let renderer = Arc::clone(renderer);
         let routines = Arc::clone(routines);
         load_skybox(&renderer, &routines.skybox).unwrap(); // load the background skybox
+        let thread_count = 2;                              // ***TEMP***
+        self.city_builder.start(thread_count, renderer);   // start up the city generator
     }
 
     fn handle_event(
@@ -587,6 +599,7 @@ impl rend3_framework::App for SceneViewer {
                 event: WindowEvent::CloseRequested,
                 ..
             } => {
+                self.city_builder.stop();               // shut down other threads
                 control_flow(winit::event_loop::ControlFlow::Exit);
             }
             _ => {}
