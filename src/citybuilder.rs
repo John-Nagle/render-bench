@@ -4,7 +4,8 @@
 //
 //  Used for generating simple 3D scenes for benchmarking purposes.
 //
-use anyhow::Error;
+use super::solids;
+use std::collections::HashMap;
 use std::time::Duration;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
@@ -18,19 +19,38 @@ use rend3::{
     Renderer,
 };
 
+//  Supplied parameters for building the city
+#[derive(Debug, Clone)]
+pub struct CityParams {
+    building_count: usize,
+    texture_dir: String,                            // directory path to content
+    texture_files: Vec<(String, String, String)>,   // texture name, albedo file, normal file
+}
+
+impl CityParams {
+    //  Params are (texture name, albedo file, normal file)
+    pub fn new(building_count: usize, texture_dir: String, texture_files: Vec<(&str,&str,&str)>) -> CityParams {
+        CityParams {
+            building_count,
+            texture_dir,
+            texture_files: texture_files.iter().map(|item| (item.0.to_string(), item.1.to_string(), item.2.to_string())).collect(),
+        }
+    } 
+}
+
 pub struct CityObject {
     object_handle: ObjectHandle,
 }
 
 pub struct CityState {
-    pub desired_count: usize,                       // how many to create
-    pub objects: Vec<CityObject>                    // the objects
+    pub objects: Vec<CityObject>,                   // the objects
+    pub textures: HashMap<String, (TextureHandle, TextureHandle)>    // the textures
 }
 
 impl CityState {
     /// Usual new
-    pub fn new(desired_count: usize) -> CityState {
-        CityState { desired_count, objects: Vec::new() }
+    pub fn new() -> CityState {
+        CityState { objects: Vec::new(), textures: HashMap::new() }
     }
 }
 
@@ -41,22 +61,25 @@ pub struct CityBuilder {
     pub threads: Vec<thread::JoinHandle<()>>,           // the threads 
     pub state: Arc<Mutex<CityState>>,                   // shared state
     pub stop_flag: Arc<AtomicBool>,                     // set to stop
+    pub params: CityParams,                             // params
 }
 
 impl CityBuilder {
     /// Create but do not start yet
-    pub fn new(desired_count: usize) -> CityBuilder {
+    pub fn new(city_params: CityParams) -> CityBuilder {
         CityBuilder {
-            state: Arc::new(Mutex::new(CityState::new(desired_count))),
+            state: Arc::new(Mutex::new(CityState::new())),
             threads: Vec::new(),
             stop_flag: Arc::new(AtomicBool::new(false)),
+            params: city_params.clone(),
+            
         }
     }
-
+    
     /// Start and fire off threads.        
     pub fn start(&mut self, thread_count: usize, renderer: Arc<Renderer>) {
         assert!(thread_count < 100);                // sanity
-        self.init();                                // any needed pre-thread init
+        self.init(&renderer);                       // any needed pre-thread init
         for n in 0..thread_count {
             let renderer_clone = Arc::clone(&renderer);
             let state_clone = Arc::clone(&self.state);
@@ -78,8 +101,24 @@ impl CityBuilder {
         println!("All worker threads shut down.");       
     }
     
+    /// Load texture files. List of (texturename, albedo map, normal map)
+    /// Files should be power of 2 and square, PNG format.
+    /// Textures needed: "brick", "stone", "ground", "wood"
+    fn load_texture(renderer: &Renderer, dir: &str, fileinfo: &(String, String, String)) -> (String, (TextureHandle, TextureHandle)) {
+        let (tex, albedo_name, normal_name) = fileinfo;
+        let albedo_filename = format!("{}/{}", dir, albedo_name);
+        let normal_filename = format!("{}/{}", dir, albedo_name);
+        (tex.clone(),(solids::create_simple_texture(renderer, &albedo_filename).unwrap(),
+        solids::create_simple_texture(renderer, &normal_filename).unwrap()))
+    }
+
+    
     /// Pre-spawn initialization
-    fn init(&mut self) {
+    fn init(&mut self, renderer: &Renderer) {
+        //  Load all the textures
+        self.state.lock().unwrap().textures = 
+            self.params.texture_files.iter().map(|item| 
+                Self::load_texture(renderer, &self.params.texture_dir, item)).collect();
     }
     
     /// Actually does the work

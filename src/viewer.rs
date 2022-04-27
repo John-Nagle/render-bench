@@ -3,7 +3,7 @@
 //
 //  Based roughly on scene-viewer from Rend3.
 //
-//  Threaded targets only - no Android.
+//  Shared memory threaded targets only - no Android.
 //
 use anyhow::{anyhow, Context, Error};
 use glam::{DVec2, Mat3A, Mat4, UVec2, Vec3, Vec3A};
@@ -27,7 +27,14 @@ use winit::{
 };
 
 use super::platform;
-use super::citybuilder::{CityBuilder};
+use super::citybuilder::{CityBuilder, CityParams};
+//
+//  Constants
+//
+//  Names of all the assets files.
+const SKYBOX_TEXTURES_DIR: &str = "/resources/skybox";
+const CITY_TEXTURES_DIR: &str = "/resources/city";
+const CITY_TEXTURES: [(&str,&str,&str);1] = [("brick", "redbrick_albedo.png", "redbrick_normal.png")];
 
 /// Load all faces of a skybox image. Output bytes as one big RGBA-ordered image.
 fn load_skybox_images(prefix: &str, filenames: &[&str]) -> Result<((u32, u32), Vec<u8>), Error> {
@@ -65,7 +72,7 @@ fn load_skybox_images(prefix: &str, filenames: &[&str]) -> Result<((u32, u32), V
 
 /// Load the skybox from individual images.
 fn load_skybox(renderer: &Renderer, skybox_routine: &Mutex<SkyboxRoutine>) -> Result<(), Error> {
-    let prefix = concat!(env!("CARGO_MANIFEST_DIR"), "/resources/skybox"); // filename prefix
+    let prefix = env!("CARGO_MANIFEST_DIR").to_owned() + SKYBOX_TEXTURES_DIR; // filename prefix
     let skybox_files: [&str; 6] = [
         "right.jpg",
         "left.jpg",
@@ -74,7 +81,7 @@ fn load_skybox(renderer: &Renderer, skybox_routine: &Mutex<SkyboxRoutine>) -> Re
         "front.jpg",
         "back.jpg",
     ];
-    let (dims, image) = load_skybox_images(prefix, &skybox_files)?; // Combine into one big texture
+    let (dims, image) = load_skybox_images(&prefix, &skybox_files)?; // Combine into one big texture
     let handle = renderer.add_texture_cube(Texture {
         format: TextureFormat::Rgba8UnormSrgb,
         size: UVec2::new(dims.0, dims.1),
@@ -265,12 +272,18 @@ impl SceneViewer {
             std::process::exit(1);
         }
         //  Model
-        let building_count = 1;         // ***TEMP***
 
         if help {
             eprintln!("{}", HELP);
             std::process::exit(1);
         }
+        
+        //  Parameters for city building
+        let building_count = 1; // ***TEMP***
+        let city_params =  CityParams::new(
+            building_count,
+            env!("CARGO_MANIFEST_DIR").to_owned() + CITY_TEXTURES_DIR,
+            CITY_TEXTURES.to_vec());           
 
         Self {
             absolute_mouse,
@@ -298,8 +311,9 @@ impl SceneViewer {
             last_mouse_delta: None,
 
             grabber: None,
-            //  Model
-            city_builder: CityBuilder::new(building_count),               // our model
+            //  Model parameters
+
+            city_builder: CityBuilder::new(city_params),               // our model
         }
     }
 }
