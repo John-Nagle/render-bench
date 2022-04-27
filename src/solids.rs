@@ -2,18 +2,67 @@
 //
 //  Used for generating simple 3D scenes for benchmarking purposes.
 //
-use glam::{DVec2, Mat3A, Mat4, Vec2, UVec2, Vec3, Vec3A, Quat};			
+use glam::{DVec2, Mat3, Mat3A, Mat4, Vec2, UVec2, Vec3, Vec3A, Vec4, Quat};			
 use rend3::{
     types::{
         Backend, Camera, Mesh, MeshHandle, MeshBuilder, Material, MaterialHandle,
-        Texture, TextureHandle, TextureFormat, Object, ObjectHandle
-    },
+        Texture, TextureHandle, TextureFormat, Object, ObjectHandle,
+        },
     util::typedefs::FastHashMap,
     Renderer, RendererProfile,
 };
 
+use rend3_routine::pbr:: {
+    PbrMaterial,
+    AlbedoComponent,
+    MaterialComponent
+};
 
+/// Create a simple block.
+//  Each block gets its own material, because we do it that way in the SL viewer.
+//  No instancing here.
+pub fn create_simple_block(
+    renderer: &Renderer,
+    scale: Vec3,                        // this rescales the actual mesh
+    offset: Vec3,                       // this offsets the coords in the mesh
+    pos: Vec3,                          // position in transform
+    rot: Quat,                          // rotation
+    texture_handle: TextureHandle,      // texture handle
+    texture_scale: f32,                 // texture scaling
+) -> ObjectHandle {
+    println!("Add built-in object at {:?} size {:?}", pos, scale); // ***TEMP***
+    let material = create_simple_material(renderer, texture_handle);  // the texture
+    let mesh = create_mesh(scale, offset, texture_scale);
+    let mesh_handle = renderer.add_mesh(mesh);
+    //  Add object to Rend3 system
+    renderer.add_object(Object {
+        mesh_kind: rend3::types::ObjectMeshKind::Static(mesh_handle),
+        material,
+        transform: Mat4::from_scale_rotation_translation(Vec3::ONE, rot, pos),
+    })
+}
 
+/// Very simple texture, but a bit of shinyness.
+pub fn create_simple_material(renderer: &Renderer, texture_handle: TextureHandle) -> MaterialHandle {
+    let diffuse_color = Vec4::ONE;                  // white
+    //  Albedo from texture
+    let albedo = AlbedoComponent::TextureValue {
+        texture: texture_handle,
+        value: diffuse_color,
+    };
+    let pbr_material = PbrMaterial {
+        albedo,
+        ////normal,
+        ////aomr_textures,
+        ao_factor: Some(1.0),
+        metallic_factor: Some(0.2),
+        roughness_factor: Some(0.2), // ***TEMP TEST***
+        uv_transform0: Mat3::IDENTITY,
+        uv_transform1: Mat3::IDENTITY, // not used yet
+        ..Default::default()
+    };
+    renderer.add_material(pbr_material)         // add material to Rend3 system
+}
 
 
 /// Create one object at given coordinates
