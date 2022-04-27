@@ -2,21 +2,22 @@
 //
 //  Used for generating simple 3D scenes for benchmarking purposes.
 //
-use glam::{DVec2, Mat3, Mat3A, Mat4, Vec2, UVec2, Vec3, Vec3A, Vec4, Quat};			
+use anyhow::Error;
+use glam::{Mat3, Mat4, Vec2, UVec2, Vec3, Vec4, Quat};			
 use rend3::{
     types::{
-        Backend, Camera, Mesh, MeshHandle, MeshBuilder, Material, MaterialHandle,
+        Mesh, MeshHandle, MeshBuilder, MaterialHandle,
         Texture, TextureHandle, TextureFormat, Object, ObjectHandle,
         },
-    util::typedefs::FastHashMap,
-    Renderer, RendererProfile,
+    Renderer,
 };
 
 use rend3_routine::pbr:: {
     PbrMaterial,
     AlbedoComponent,
-    MaterialComponent
 };
+use core::num::NonZeroU32;
+use image;
 
 /// Create a simple block.
 //  Each block gets its own material, because we do it that way in the SL viewer.
@@ -62,6 +63,25 @@ pub fn create_simple_material(renderer: &Renderer, texture_handle: TextureHandle
         ..Default::default()
     };
     renderer.add_material(pbr_material)         // add material to Rend3 system
+}
+
+/// Create a simple texture for display. No normalization, etc.
+pub fn create_simple_texture(renderer: &Renderer, file_name: &str) -> Result<TextureHandle, Error> {
+    //  Read from file.
+    let img = image::io::Reader::open(file_name)?.decode()?;
+    let rgba = img.to_rgba8();                   // to desired format
+    //  Convert to Rend3 format.
+    let mips = 1;                               // no mipmapping for now
+    let texture = Texture {
+        label: Some(file_name.to_string()),
+        format: TextureFormat::Rgba8UnormSrgb, // per WGPU tutorial
+        size: UVec2::new(rgba.width(), rgba.height()),
+        data: rgba.into_raw(),
+        //// TODO: automatic mipmapping (#53)
+        mip_count: rend3::types::MipmapCount::Specific(NonZeroU32::new(mips).unwrap()),
+        mip_source: rend3::types::MipmapSource::Uploaded,
+    };
+    Ok(renderer.add_texture_2d(texture))              // put into GPU
 }
 
 
