@@ -10,11 +10,10 @@ use std::time::Duration;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::sync::{Arc,Mutex};
-use glam::{Mat3, Mat4, Vec2, UVec2, Vec3, Vec4, Quat};
+use glam::{Vec3, Quat};
 use rend3::{
     types::{
-        Mesh, MeshHandle, MeshBuilder, MaterialHandle,
-        Texture, TextureHandle, TextureFormat, Object, ObjectHandle,
+        TextureHandle, ObjectHandle,
         },
     Renderer,
 };
@@ -22,7 +21,7 @@ use rend3::{
 //  Supplied parameters for building the city
 #[derive(Debug, Clone)]
 pub struct CityParams {
-    building_count: usize,
+    building_count: usize,                          // number of buildings to generate
     texture_dir: String,                            // directory path to content
     texture_files: Vec<(String, String, String)>,   // texture name, albedo file, normal file
 }
@@ -71,7 +70,7 @@ impl CityBuilder {
             state: Arc::new(Mutex::new(CityState::new())),
             threads: Vec::new(),
             stop_flag: Arc::new(AtomicBool::new(false)),
-            params: city_params.clone(),
+            params: city_params,
             
         }
     }
@@ -107,7 +106,7 @@ impl CityBuilder {
     fn load_texture(renderer: &Renderer, dir: &str, fileinfo: &(String, String, String)) -> (String, (TextureHandle, TextureHandle)) {
         let (tex, albedo_name, normal_name) = fileinfo;
         let albedo_filename = format!("{}/{}", dir, albedo_name);
-        let normal_filename = format!("{}/{}", dir, albedo_name);
+        let normal_filename = format!("{}/{}", dir, normal_name);
         (tex.clone(),(solids::create_simple_texture(renderer, &albedo_filename).unwrap(),
         solids::create_simple_texture(renderer, &normal_filename).unwrap()))
     }

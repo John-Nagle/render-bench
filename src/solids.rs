@@ -8,7 +8,7 @@ use anyhow::Error;
 use glam::{Mat3, Mat4, Vec2, UVec2, Vec3, Vec4, Quat};			
 use rend3::{
     types::{
-        Mesh, MeshHandle, MeshBuilder, MaterialHandle,
+        Mesh, MeshBuilder, MaterialHandle,
         Texture, TextureHandle, TextureFormat, Object, ObjectHandle,
         },
     Renderer,
@@ -20,7 +20,6 @@ use rend3_routine::pbr:: {
     NormalTexture
 };
 use core::num::NonZeroU32;
-use image;
 
 /// Create a simple block.
 //  Each block gets its own material, because we do it that way in the SL viewer.
@@ -58,7 +57,7 @@ pub fn create_simple_material(renderer: &Renderer, albedo_handle: TextureHandle,
     let normal = NormalTexture::Tricomponent(normal_handle, Default::default());
     let pbr_material = PbrMaterial {
         albedo,
-        ////normal,
+        normal,
         ////aomr_textures,
         ao_factor: Some(1.0),
         metallic_factor: Some(0.2),
@@ -87,25 +86,6 @@ pub fn create_simple_texture(renderer: &Renderer, file_name: &str) -> Result<Tex
         mip_source: rend3::types::MipmapSource::Uploaded,
     };
     Ok(renderer.add_texture_2d(texture))              // put into GPU
-}
-
-
-/// Create one object at given coordinates
-fn create_block(
-    renderer: &Renderer,
-    mesh: MeshHandle,
-    material: MaterialHandle,
-    scale: Vec3,
-    pos: Vec3,
-    rot: Quat,
-) -> ObjectHandle {
-    println!("Add built-in object at {:?} size {:?}", pos, scale); // ***TEMP***
-    renderer.add_object(Object {
-        ////mesh: mesh.expect("Built-in object mesh invalid"),
-        mesh_kind: rend3::types::ObjectMeshKind::Static(mesh),
-        material,
-        transform: Mat4::from_scale_rotation_translation(scale, rot, pos),
-    })
 }
 
 //  Create a mesh object with the appropriate scale and origin offset.
@@ -159,8 +139,8 @@ fn calc_single_uv(pos: Vec2, normal: f32) -> Vec2 {
 
 /// Default UVs, scaled as mesh is scaled, so repetitive textures work.
 //  So this is a planar mapping. We can use it for bricks and such.
-fn calc_uvs(vertex_positions: &Vec<Vec3>, normals: &Vec<Vec3>, texture_scale: f32) -> Vec<Vec2> {
-    vertex_positions.iter().zip(normals).map(|(v, n)| calc_uv(norm_to_axis(n), v, &n)*texture_scale).collect()
+fn calc_uvs(vertex_positions: &[Vec3], normals: &[Vec3], texture_scale: f32) -> Vec<Vec2> {
+    vertex_positions.iter().zip(normals).map(|(v, n)| calc_uv(norm_to_axis(n), v, n)*texture_scale).collect()
 }
 
 //  The unit cube. No shared verts at corners.
