@@ -123,15 +123,27 @@ impl CityBuilder {
     /// Actually does the work
     fn run(state: Arc<Mutex<CityState>>, renderer: Arc<Renderer>, id: usize, stop_flag: Arc<AtomicBool>) {
         let brick_textures = state.lock().unwrap().textures.get("brick").unwrap().clone();    // get brick textures
+        let ground_textures = state.lock().unwrap().textures.get("ground").unwrap().clone();    // get brick textures
+        //  Make ground plane
+        const WORLD_SIZE: f32 = 256.0;                      // one SL region size
+        let _ground_handle = solids::create_simple_block(
+            &renderer,
+            Vec3::new(WORLD_SIZE, 0.5, WORLD_SIZE),          // Ground object
+            Vec3::ZERO,
+            Vec3::new(0.0, -0.25, 0.0), // ground surface is at Z=0.0
+            Quat::IDENTITY,             // no rotation
+            ground_textures.0,
+            ground_textures.1,
+            1.0);
         //  ***TEMP TEST*** Make one brick block appear.
         let object_handle = solids::create_simple_block(
             &renderer,
             Vec3::splat(10.0),          // 10m cube
             Vec3::ZERO,
-            Vec3::new(0.0, 10.0, 0.0),
+            Vec3::new(0.0, 5.0, 0.0),
             Quat::IDENTITY,             // no rotation
-            brick_textures.0,
-            brick_textures.1,
+            brick_textures.0.clone(),
+            brick_textures.1.clone(),
             1.0);
         let new_city_object = CityObject{ object_handle };
         state.lock().unwrap().objects.push(new_city_object);          // keep around

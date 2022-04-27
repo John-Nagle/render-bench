@@ -34,7 +34,12 @@ use super::citybuilder::{CityBuilder, CityParams};
 //  Names of all the assets files.
 const SKYBOX_TEXTURES_DIR: &str = "/resources/skybox";
 const CITY_TEXTURES_DIR: &str = "/resources/city";
-const CITY_TEXTURES: [(&str,&str,&str);1] = [("brick", "redbrick_albedo.png", "redbrick_normal.png")];
+const CITY_TEXTURES: [(&str,&str,&str);4] = [
+    ("brick", "redbrick_albedo.png", "redbrick_normal.png"),
+    ("ground", "cobblestone_albedo.png", "cobblestone_normal.png"),
+    ("whitemarble", "white_marble_albedo.png", "white_marble_normal.png"),
+    ("greenmarble", "green_marble_albedo.png", "green_marble_normal.png"),                            
+    ];
 
 /// Load all faces of a skybox image. Output bytes as one big RGBA-ordered image.
 fn load_skybox_images(prefix: &str, filenames: &[&str]) -> Result<((u32, u32), Vec<u8>), Error> {
@@ -247,8 +252,10 @@ impl SceneViewer {
         let fullscreen = args.contains("--fullscreen");
 
         // Assets
-        let directional_light_direction =
-            option_arg(args.opt_value_from_fn("--directional-light", extract_vec3));
+        let directional_light_direction = match option_arg(args.opt_value_from_fn("--directional-light", extract_vec3)) {
+            Some(v) => Some(v),
+            None => Some(Vec3::new(-1.0, -1.0, -1.0))              // reasonable default sunlight direction
+        };
         let directional_light_intensity: f32 =
             option_arg(args.opt_value_from_str("--directional-light-intensity")).unwrap_or(4.0);
         let ambient_light_level: f32 =
