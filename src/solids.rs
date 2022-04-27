@@ -17,6 +17,7 @@ use rend3::{
 use rend3_routine::pbr:: {
     PbrMaterial,
     AlbedoComponent,
+    NormalTexture
 };
 use core::num::NonZeroU32;
 use image;
@@ -30,11 +31,12 @@ pub fn create_simple_block(
     offset: Vec3,                       // this offsets the coords in the mesh
     pos: Vec3,                          // position in transform
     rot: Quat,                          // rotation
-    texture_handle: TextureHandle,      // texture handle
+    albedo_handle: TextureHandle,       // albedo texture
+    normal_handle: TextureHandle,       // normal textures
     texture_scale: f32,                 // texture scaling
 ) -> ObjectHandle {
     println!("Add built-in object at {:?} size {:?}", pos, scale); // ***TEMP***
-    let material = create_simple_material(renderer, texture_handle);  // the texture
+    let material = create_simple_material(renderer, albedo_handle, normal_handle);  // the texture
     let mesh = create_mesh(scale, offset, texture_scale);
     let mesh_handle = renderer.add_mesh(mesh);
     //  Add object to Rend3 system
@@ -46,13 +48,14 @@ pub fn create_simple_block(
 }
 
 /// Very simple texture, but a bit of shinyness.
-pub fn create_simple_material(renderer: &Renderer, texture_handle: TextureHandle) -> MaterialHandle {
+pub fn create_simple_material(renderer: &Renderer, albedo_handle: TextureHandle, normal_handle: TextureHandle) -> MaterialHandle {
     let diffuse_color = Vec4::ONE;                  // white
     //  Albedo from texture
     let albedo = AlbedoComponent::TextureValue {
-        texture: texture_handle,
+        texture: albedo_handle,
         value: diffuse_color,
     };
+    let normal = NormalTexture::Tricomponent(normal_handle, Default::default());
     let pbr_material = PbrMaterial {
         albedo,
         ////normal,

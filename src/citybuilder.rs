@@ -122,7 +122,21 @@ impl CityBuilder {
     }
     
     /// Actually does the work
-    fn run(state: Arc<Mutex<CityState>>, renderer_clone: Arc<Renderer>, id: usize, stop_flag: Arc<AtomicBool>) {
+    fn run(state: Arc<Mutex<CityState>>, renderer: Arc<Renderer>, id: usize, stop_flag: Arc<AtomicBool>) {
+        let brick_textures = state.lock().unwrap().textures.get("brick").unwrap().clone();    // get brick textures
+        //  ***TEMP TEST*** Make one brick block appear.
+        let object_handle = solids::create_simple_block(
+            &renderer,
+            Vec3::splat(10.0),          // 10m cube
+            Vec3::ZERO,
+            Vec3::new(0.0, 10.0, 0.0),
+            Quat::IDENTITY,             // no rotation
+            brick_textures.0,
+            brick_textures.1,
+            1.0);
+        let new_city_object = CityObject{ object_handle };
+        state.lock().unwrap().objects.push(new_city_object);          // keep around
+        //  ***END TEMP***
         loop {
             if stop_flag.load(Ordering::Relaxed) { break }          // shut down
             std::thread::sleep(Duration::from_millis(10));          // ***TEMP TEST***
