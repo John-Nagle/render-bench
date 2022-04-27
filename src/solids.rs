@@ -1,5 +1,7 @@
 //  solids.rs -- draw simple solid objects
 //
+//  Part of render-bench.
+//
 //  Used for generating simple 3D scenes for benchmarking purposes.
 //
 use anyhow::Error;
