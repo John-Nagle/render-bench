@@ -30,12 +30,12 @@ pub fn create_simple_block(
     offset: Vec3,                                        // this offsets the coords in the mesh
     pos: Vec3,                                           // position in transform
     rot: Quat,                                           // rotation
-    texture_info: (&TextureHandle, &TextureHandle, f32), // (albedo, normal, scale)
+    texture_info: &(TextureHandle, TextureHandle, f32), // (albedo, normal, scale)
 ) -> ObjectHandle {
     let (albedo_handle, normal_handle, texture_scale) = texture_info; // unpack tuple
     ////println!("Add built-in object at {:?} size {:?}", pos, scale); // ***TEMP***
     let material = create_simple_material(renderer, albedo_handle, normal_handle); // the texture
-    let mesh = create_mesh(scale, offset, texture_scale);
+    let mesh = create_mesh(scale, offset, *texture_scale);
     let mesh_handle = renderer.add_mesh(mesh);
     //  Add object to Rend3 system
     renderer.add_object(Object {
@@ -74,7 +74,7 @@ pub fn create_simple_material(
 
 /// Create a simple texture for display. No normalization, etc.
 pub fn create_simple_texture(renderer: &Renderer, full_pathname: &str) -> Result<TextureHandle, Error> {
-    Ok(create_texture_from_rgba(renderer, full_pathname, read_texture(full_pathname)?))
+    Ok(create_texture_from_rgba(renderer, full_pathname, &read_texture(full_pathname)?))
 }
 
 /// Read texture, get RGBA
@@ -87,13 +87,13 @@ pub fn read_texture(full_pathname: &str) -> Result<RgbaImage, Error> {
 }
     
 /// Create texture from RGBA
-pub fn create_texture_from_rgba(renderer: &Renderer, label: &str, rgba: RgbaImage) -> TextureHandle {
+pub fn create_texture_from_rgba(renderer: &Renderer, label: &str, rgba: &RgbaImage) -> TextureHandle {
     let mips = 1; // no mipmapping for now
     let texture = Texture {
         label: Some(label.to_string()),
         format: TextureFormat::Rgba8UnormSrgb, // per WGPU tutorial
         size: UVec2::new(rgba.width(), rgba.height()),
-        data: rgba.into_raw(),
+        data: rgba.clone().into_raw(),
         //// TODO: automatic mipmapping (#53)
         mip_count: rend3::types::MipmapCount::Specific(NonZeroU32::new(mips).unwrap()),
         mip_source: rend3::types::MipmapSource::Uploaded,

@@ -11,6 +11,7 @@ use rend3::{
     types::{ObjectHandle, TextureHandle},
     Renderer,
 };
+use image::RgbaImage;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -22,7 +23,7 @@ use std::time::Duration;
 pub struct CityParams {
     building_count: usize,                        // number of buildings to generate
     texture_dir: String,                          // directory path to content
-    texture_files: Vec<(String, String, String)>, // texture name, albedo file, normal file
+    texture_files: Vec<(String, String, String, f32)>, // texture name, albedo file, normal file, scale
 }
 
 impl CityParams {
@@ -30,14 +31,14 @@ impl CityParams {
     pub fn new(
         building_count: usize,
         texture_dir: String,
-        texture_files: Vec<(&str, &str, &str)>,
+        texture_files: Vec<(&str, &str, &str, f32)>,
     ) -> CityParams {
         CityParams {
             building_count,
             texture_dir,
             texture_files: texture_files
                 .iter()
-                .map(|item| (item.0.to_string(), item.1.to_string(), item.2.to_string()))
+                .map(|item| (item.0.to_string(), item.1.to_string(), item.2.to_string(), item.3))
                 .collect(),
         }
     }
@@ -49,7 +50,7 @@ pub struct CityObject {
 
 pub struct CityState {
     pub objects: Vec<CityObject>, // the objects
-    pub textures: HashMap<String, (TextureHandle, TextureHandle)>, // the textures
+    pub textures: TextureSetRgbaMap,            // map of all the textures, as ImageRgba, not TextureHandle
 }
 
 impl CityState {
@@ -134,12 +135,16 @@ impl CityBuilder {
     fn init(&mut self, renderer: &Renderer) {
         println!("Loading texture files.");
         //  Load all the textures
+        self.state.lock().unwrap().textures =
+            TextureSetRgba::new_map(&self.params.texture_dir, &self.params.texture_files);
+        /*
         self.state.lock().unwrap().textures = self
             .params
             .texture_files
             .iter()
             .map(|item| Self::load_texture(renderer, &self.params.texture_dir, item))
             .collect();
+        */
         println!("Content loaded.");
     }
 
@@ -150,16 +155,10 @@ impl CityBuilder {
         id: usize,
         stop_flag: Arc<AtomicBool>,
     ) {
-        let brick_textures = state.lock().unwrap().textures.get("brick").unwrap().clone(); // get brick textures
-        let stone_textures = state.lock().unwrap().textures.get("stone").unwrap().clone(); // get brick textures
-        let ground_textures = state
-            .lock()
-            .unwrap()
-            .textures
-            .get("ground")
-            .unwrap()
-            .clone(); // get brick textures
-                      //  Make ground plane
+        //  Convert all the textures from RGBA to texture handles.
+        let city_textures = CityTextures::new_from_map(&renderer, &state.lock().unwrap().textures);
+        
+        //  Make ground plane
         const WORLD_SIZE: f32 = 256.0; // one SL region size
         let _ground_handle = solids::create_simple_block(
             &renderer,
@@ -167,7 +166,7 @@ impl CityBuilder {
             Vec3::ZERO,
             Vec3::new(0.0, -0.25, 0.0), // ground surface is at Z=0.0
             Quat::IDENTITY,             // no rotation
-            (&ground_textures.0, &ground_textures.1, 0.25),
+            &city_textures.ground,
         );
         //  ***TEMP TEST*** Make one brick block appear.
         let object_handle = solids::create_simple_block(
@@ -176,7 +175,7 @@ impl CityBuilder {
             Vec3::ZERO,
             Vec3::new(5.0, 1.5, 0.0),
             Quat::IDENTITY, // no rotation
-            (&brick_textures.0, &brick_textures.1, 0.25),
+            &city_textures.brick,
         );
         let new_city_object = CityObject { object_handle };
         state.lock().unwrap().objects.push(new_city_object); // keep around
@@ -191,8 +190,7 @@ impl CityBuilder {
                 Vec3::new(WALL_WIDTH, 3.0, 0.2), // Brick wall
                 pos,
                 Quat::IDENTITY, // no rotation
-                (&stone_textures.0, &stone_textures.1, 0.25),
-                (&brick_textures.0, &brick_textures.1, 0.25),
+                &city_textures,
             );
             state
                 .lock()
@@ -220,8 +218,7 @@ impl CityBuilder {
             Vec3::new(WALL_WIDTH, 3.0, 0.2),
             story_pos,
             Quat::IDENTITY,
-            (&stone_textures.0, &stone_textures.1, 0.25),
-            (&brick_textures.0, &brick_textures.1, 0.25),
+            &city_textures,
         );
         state
             .lock()
@@ -244,8 +241,7 @@ impl CityBuilder {
                     Vec3::new(WALL_WIDTH, 3.0, 0.2),
                     story_pos,
                     Quat::IDENTITY,
-                    (&stone_textures.0, &stone_textures.1, 0.25),
-                    (&brick_textures.0, &brick_textures.1, 0.25),
+                    &city_textures,
                 );
                 state
                     .lock()
@@ -277,6 +273,62 @@ enum WallKind {
     Door,
     Window,
 }
+
+/// Building textures
+pub struct TextureSetRgba {
+    albedo: RgbaImage,          // albedo image
+    normal: RgbaImage,          // normal image
+    texture_scale: f32,
+}
+
+type TextureSetRgbaMap = HashMap<String, TextureSetRgba>;
+
+impl TextureSetRgba {
+    //  Make a map with all the textures as Rgba images.
+    pub fn new_map(dir: &str, textures: &Vec<(String, String, String, f32)>) -> TextureSetRgbaMap {
+    //  Read textures, save all RGBAs
+        let mut output = HashMap::new();
+        for (name, albedo_filename, normal_filename, texture_scale) in textures {    
+            let texture_set = TextureSetRgba {
+                albedo: solids::read_texture(format!("{}/{}", dir, albedo_filename).as_str()).unwrap(),
+                normal: solids::read_texture(format!("{}/{}", dir, normal_filename).as_str()).unwrap(),
+                texture_scale: *texture_scale
+            };
+            output.insert(name.clone(), texture_set);
+        }
+        output
+    }
+}
+pub type TextureSet = (TextureHandle, TextureHandle, f32);    // albedo, normal, scale
+/// The textures we need for our little city.
+pub struct CityTextures {
+    stone: TextureSet,      // used for columns
+    brick: TextureSet,      // used for walls
+    floor: TextureSet,      // used for floors
+    ceiling: TextureSet,    // used for ceilings
+    roof: TextureSet,       // used for roofs
+    ground: TextureSet,     // used for ground
+}
+
+impl CityTextures {
+    //  Make a new set of textures from an Rgba.
+    //  This duplicates the actual bitmaps, on purpose, to increase texture usage for load testing.   
+    pub fn new_from_map(renderer: &Renderer, rgbas: &TextureSetRgbaMap) -> CityTextures {
+        let make_textures = |label: &str, item: &TextureSetRgba| (
+            solids::create_texture_from_rgba(renderer, label, &item.albedo),
+            solids::create_texture_from_rgba(renderer, label, &item.normal),
+            item.texture_scale);
+        let get_textures = |key| make_textures(key, rgbas.get(key).unwrap());
+        CityTextures {
+            stone: get_textures("stone"),
+            brick: get_textures("brick"),
+            floor: get_textures("floor"),
+            ceiling: get_textures("ceiling"),
+            roof: get_textures("roof"),
+            ground: get_textures("roof")
+        }
+    }
+}
 //
 //  Draw functions for various objects
 //
@@ -292,8 +344,7 @@ fn draw_one_story(
     size: Vec3,
     pos: Vec3,
     rot: Quat,
-    stone: (&TextureHandle, &TextureHandle, f32),
-    brick: (&TextureHandle, &TextureHandle, f32),
+    textures: &CityTextures,
 ) -> Vec<ObjectHandle> {
     let width = size[0];
     let height = size[1];
@@ -309,8 +360,7 @@ fn draw_one_story(
             size,
             startpos + (itemrot * rot) * itemoffset,
             itemrot * rot,
-            stone,
-            brick,
+            textures,
         )
     };
     //  Front
@@ -373,8 +423,7 @@ fn draw_wall_section(
     size: Vec3,
     pos: Vec3,
     rot: Quat,
-    stone: (&TextureHandle, &TextureHandle, f32),
-    brick: (&TextureHandle, &TextureHandle, f32),
+    textures: &CityTextures
 ) -> Vec<ObjectHandle> {
     //  Precompute wall info
     let width = size[0];
@@ -389,7 +438,7 @@ fn draw_wall_section(
         Vec3::new(0.0, height / 2.0, 0.0),                     // base at zero
         pos,
         rot,
-        stone,
+        &textures.stone,
     )];
     // Draw wall section
     match wall_kind {
@@ -404,7 +453,7 @@ fn draw_wall_section(
                 Vec3::new((column_thickness + wall_width) / 2.0, height / 2.0, 0.0), // base at zero
                 pos,
                 rot,
-                brick,
+                &textures.brick,
             ));
         }
         WallKind::Door => {
@@ -421,7 +470,7 @@ fn draw_wall_section(
                 ), // base at zero
                 pos,
                 rot,
-                brick,
+                &textures.brick,
             ));
         }
         WallKind::Window => {
@@ -440,7 +489,7 @@ fn draw_wall_section(
                 ), // base at zero
                 pos,
                 rot,
-                brick,
+                &textures.brick,
             ));
             //  Bottom part
             objects.push(solids::create_simple_block(
@@ -453,9 +502,42 @@ fn draw_wall_section(
                 ), // base at zero
                 pos,
                 rot,
-                brick,
+                &textures.brick,
             ));
         }
     }
     objects // return handles which keep objects alive
+}
+
+/// Draw a floor section
+//  Pos is the same as for a story, the lower left hand corner.
+//  Floor texture on top, ceiling texture on bottom.
+fn draw_floor_and_ceiling(
+    renderer: &Renderer,
+    height: f32,                // floor height
+    size: Vec3,
+    pos: Vec3,
+    rot: Quat,
+    textures: &CityTextures,
+) -> Vec<ObjectHandle> {
+    let thickness = size[1];            // thickness of floor
+    let center = size*0.5;              // center of block relative to pos
+    vec![
+    solids::create_simple_block(        // floor
+        renderer,
+        size,
+        center + Vec3::new(0.0, - thickness*0.45, 0.0),
+        pos,
+        rot,
+        &textures.floor,
+    ),
+    solids::create_simple_block(        // ceiling
+        renderer,
+        size,
+        center + Vec3::new(0.0, height - thickness*0.55, 0.0),
+        pos,
+        rot,
+        &textures.ceiling,
+    ),
+    ]
 }
