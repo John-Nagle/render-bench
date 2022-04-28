@@ -223,6 +223,32 @@ impl CityBuilder {
             .extend(story_object_handles.iter().map(|object_handle| CityObject {
                 object_handle: object_handle.clone(),
             })); // keep objects around
+            
+        //  Multiple one-story buildings
+        const BLDG_ROWS: usize = 25;
+        const BLDG_SPACING: f32 = 10.0;
+        let bldg_initialpos = Vec3::new(-BLDG_SPACING*(BLDG_ROWS as f32)*0.5, 0.0, -BLDG_SPACING*(BLDG_ROWS as f32)*0.5); // center array
+        for i in 0..BLDG_ROWS {
+            for j in 0..BLDG_ROWS {
+                let story_pos = Vec3::new((i as f32)*BLDG_SPACING, 0.0, (j as f32)*BLDG_SPACING) + bldg_initialpos;
+                let story_object_handles = draw_one_story(
+                    &renderer,
+                    wall_spec,
+                    Vec3::new(WALL_WIDTH, 3.0, 0.2),
+                    story_pos,
+                    Quat::IDENTITY,
+                    (&brick_textures.0, &brick_textures.1, 0.25),
+                );
+                state
+                    .lock()
+                    .unwrap()
+                    .objects
+                    .extend(story_object_handles.iter().map(|object_handle| CityObject {
+                     object_handle: object_handle.clone(),
+                    })); // keep objects around
+            
+            }
+        };
                  //  ***END TEMP***
         loop {
             if stop_flag.load(Ordering::Relaxed) {

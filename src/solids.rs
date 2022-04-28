@@ -29,7 +29,7 @@ pub fn create_simple_block(
     texture_info: (&TextureHandle, &TextureHandle, f32), // (albedo, normal, scale)
 ) -> ObjectHandle {
     let (albedo_handle, normal_handle, texture_scale) = texture_info; // unpack tuple
-    println!("Add built-in object at {:?} size {:?}", pos, scale); // ***TEMP***
+    ////println!("Add built-in object at {:?} size {:?}", pos, scale); // ***TEMP***
     let material = create_simple_material(renderer, albedo_handle, normal_handle); // the texture
     let mesh = create_mesh(scale, offset, texture_scale);
     let mesh_handle = renderer.add_mesh(mesh);
