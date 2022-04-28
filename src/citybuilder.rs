@@ -134,17 +134,17 @@ impl CityBuilder {
             Quat::IDENTITY,             // no rotation
             ground_textures.0,
             ground_textures.1,
-            1.0);
+            0.25);
         //  ***TEMP TEST*** Make one brick block appear.
         let object_handle = solids::create_simple_block(
             &renderer,
-            Vec3::splat(10.0),          // 10m cube
+            Vec3::new(1.5, 3.0, 0.2),          // Brick wall
             Vec3::ZERO,
-            Vec3::new(0.0, 5.0, 0.0),
+            Vec3::new(5.0, 1.5, 0.0),
             Quat::IDENTITY,             // no rotation
             brick_textures.0.clone(),
             brick_textures.1.clone(),
-            1.0);
+            0.5);
         let new_city_object = CityObject{ object_handle };
         state.lock().unwrap().objects.push(new_city_object);          // keep around
         //  ***END TEMP***
