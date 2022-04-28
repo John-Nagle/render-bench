@@ -1,7 +1,7 @@
-mod platform;
-mod viewer;
-mod solids;
 mod citybuilder;
+mod platform;
+mod solids;
+mod viewer;
 fn main() {
     viewer::viewer();
 }

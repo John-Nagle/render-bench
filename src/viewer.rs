@@ -26,20 +26,28 @@ use winit::{
     window::{Fullscreen, WindowBuilder},
 };
 
-use super::platform;
 use super::citybuilder::{CityBuilder, CityParams};
+use super::platform;
 //
 //  Constants
 //
 //  Names of all the assets files.
 const SKYBOX_TEXTURES_DIR: &str = "/resources/skybox";
 const CITY_TEXTURES_DIR: &str = "/resources/city";
-const CITY_TEXTURES: [(&str,&str,&str);4] = [
+const CITY_TEXTURES: [(&str, &str, &str); 4] = [
     ("brick", "redbrick_albedo.png", "redbrick_normal.png"),
     ("ground", "cobblestone_albedo.png", "cobblestone_normal.png"),
-    ("whitemarble", "white_marble_albedo.png", "white_marble_normal.png"),
-    ("greenmarble", "green_marble_albedo.png", "green_marble_normal.png"),                            
-    ];
+    (
+        "whitemarble",
+        "white_marble_albedo.png",
+        "white_marble_normal.png",
+    ),
+    (
+        "greenmarble",
+        "green_marble_albedo.png",
+        "green_marble_normal.png",
+    ),
+];
 
 /// Load all faces of a skybox image. Output bytes as one big RGBA-ordered image.
 fn load_skybox_images(prefix: &str, filenames: &[&str]) -> Result<((u32, u32), Vec<u8>), Error> {
@@ -225,10 +233,9 @@ struct SceneViewer {
     last_mouse_delta: Option<DVec2>,
 
     grabber: Option<rend3_framework::Grabber>,
-    
+
     //  Model
-    city_builder: CityBuilder,              // what we get to look at
-    
+    city_builder: CityBuilder, // what we get to look at
 }
 impl SceneViewer {
     pub fn new() -> Self {
@@ -252,10 +259,11 @@ impl SceneViewer {
         let fullscreen = args.contains("--fullscreen");
 
         // Assets
-        let directional_light_direction = match option_arg(args.opt_value_from_fn("--directional-light", extract_vec3)) {
-            Some(v) => Some(v),
-            None => Some(Vec3::new(-1.0, -1.0, -1.0))              // reasonable default sunlight direction
-        };
+        let directional_light_direction =
+            match option_arg(args.opt_value_from_fn("--directional-light", extract_vec3)) {
+                Some(v) => Some(v),
+                None => Some(Vec3::new(-1.0, -1.0, -1.0)), // reasonable default sunlight direction
+            };
         let directional_light_intensity: f32 =
             option_arg(args.opt_value_from_str("--directional-light-intensity")).unwrap_or(4.0);
         let ambient_light_level: f32 =
@@ -284,13 +292,14 @@ impl SceneViewer {
             eprintln!("{}", HELP);
             std::process::exit(1);
         }
-        
+
         //  Parameters for city building
         let building_count = 1; // ***TEMP***
-        let city_params =  CityParams::new(
+        let city_params = CityParams::new(
             building_count,
             env!("CARGO_MANIFEST_DIR").to_owned() + CITY_TEXTURES_DIR,
-            CITY_TEXTURES.to_vec());           
+            CITY_TEXTURES.to_vec(),
+        );
 
         Self {
             absolute_mouse,
@@ -319,8 +328,7 @@ impl SceneViewer {
 
             grabber: None,
             //  Model parameters
-
-            city_builder: CityBuilder::new(city_params),               // our model
+            city_builder: CityBuilder::new(city_params), // our model
         }
     }
 }
@@ -381,8 +389,8 @@ impl rend3_framework::App for SceneViewer {
         let renderer = Arc::clone(renderer);
         let routines = Arc::clone(routines);
         load_skybox(&renderer, &routines.skybox).unwrap(); // load the background skybox
-        let thread_count = 2;                              // ***TEMP***
-        self.city_builder.start(thread_count, renderer);   // start up the city generator
+        let thread_count = 2; // ***TEMP***
+        self.city_builder.start(thread_count, renderer); // start up the city generator
     }
 
     fn handle_event(
@@ -620,7 +628,7 @@ impl rend3_framework::App for SceneViewer {
                 event: WindowEvent::CloseRequested,
                 ..
             } => {
-                self.city_builder.stop();               // shut down other threads
+                self.city_builder.stop(); // shut down other threads
                 control_flow(winit::event_loop::ControlFlow::Exit);
             }
             _ => {}
