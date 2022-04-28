@@ -4,6 +4,7 @@
 //
 //  Used for generating simple 3D scenes for benchmarking purposes.
 //
+use core::f32::consts::PI;
 use super::solids;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -161,9 +162,22 @@ impl CityBuilder {
             state.lock().unwrap().objects
                 .extend(object_handles
                 .iter()
-                .map(|object_handle| CityObject { object_handle: object_handle.clone() }));   // keep objects around
+                .map(|object_handle| CityObject { object_handle: object_handle.	clone() }));   // keep objects around
             
-        }           
+        }      
+        
+        //  One story of a building
+        let wall_spec: (&[WallKind], &[WallKind]) = (
+            &[WallKind::Door, WallKind::Window, WallKind::Solid, WallKind::Solid]	,
+            &[WallKind::Window, WallKind::Solid]);
+        let story_pos = Vec3::new(0.0, 0.0, 25.0);
+        let story_object_handles = 
+            draw_one_story(&renderer, wall_spec, Vec3::new(WALL_WIDTH, 3.0, 0.2), story_pos, Quat::IDENTITY, 
+                (&brick_textures.0, &brick_textures.1, 0.25));
+        state.lock().unwrap().objects
+            .extend(story_object_handles
+            .iter()
+            .map(|object_handle| CityObject { object_handle: object_handle.clone() }));   // keep objects around           
         //  ***END TEMP***
         loop {
             if stop_flag.load(Ordering::Relaxed) { break }          // shut down
@@ -175,6 +189,7 @@ impl CityBuilder {
 //
 //  WallKind
 //
+#[derive(Debug, Copy, Clone)]
 enum WallKind {
     None,
     Solid,
@@ -184,6 +199,41 @@ enum WallKind {
 //
 //  Draw functions for various objects
 //
+
+/// Draw one story of a building.
+//  A story is a rectangular set of wall sections.
+//  Specify door, window, solid sections.
+//  Specify two sides; the other side is a mirror.
+//
+fn draw_one_story(renderer: &Renderer, wall_spec: (&[WallKind], &[WallKind]), size: Vec3, pos: Vec3, rot: Quat, 
+        textures: (&TextureHandle, &TextureHandle, f32)) -> Vec<ObjectHandle> {
+    let width = size[0];
+    let thickness = size[2];
+    let height = size[1];
+    let (front, side) = wall_spec;
+    let mut objects = Vec::new();
+    //  Draw each face, given offsets from input position
+    let draw_one_face = |itemoffset, itemrot, kind: &WallKind| 
+        draw_wall_section(renderer, *kind, size, pos + (itemrot*rot)*itemoffset, itemrot*rot, textures);
+    //  Front
+    objects.extend(
+        front.iter().enumerate().map(|(i, kind)| {
+            let itemoffset = Vec3::new((i as f32)*width, 0.0, 0.0);
+            draw_one_face(itemoffset, Quat::IDENTITY, kind)
+        }).flatten().collect::<Vec<ObjectHandle>>()
+    );
+    /*
+    //  Side
+    objects.extend(
+        side.iter().enumerate().map(|(i, kind)| {
+            let itemoffset = Vec3::new((i as f32)*width, 0.0, 0.0);
+            draw_one_face(itemoffset, Quat::from_rotation_y(PI*0.5), kind)
+        }).flatten().collect::<Vec<ObjectHandle>>()          
+    );
+    */
+    objects
+}
+
 /// Draw a wall section.
 //  A wall section has a column at the left.
 //  A row of these in the X direction makes a wall.
@@ -215,7 +265,7 @@ fn draw_wall_section(renderer: &Renderer, wall_kind: WallKind, size: Vec3, pos: 
             objects.push(solids::create_simple_block(
                 renderer,
                 Vec3::new(wall_width, height, thickness),  // size of column
-                Vec3::new(column_thickness + wall_width/2.0, height/2.0, 0.0),    // base at zero
+                Vec3::new((column_thickness + wall_width)/2.0, height/2.0, 0.0),    // base at zero
                 pos,
                 rot,
                 textures));
@@ -227,7 +277,7 @@ fn draw_wall_section(renderer: &Renderer, wall_kind: WallKind, size: Vec3, pos: 
             objects.push(solids::create_simple_block(
                 renderer,
                 Vec3::new(wall_width, top_height, thickness),  // size of door lintel
-                Vec3::new(column_thickness + wall_width/2.0, opening_height + top_height/2.0, 0.0),    // base at zero
+                Vec3::new((column_thickness + wall_width)/2.0, opening_height + top_height/2.0, 0.0),    // base at zero
                 pos,
                 rot,
                 textures));
