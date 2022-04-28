@@ -144,7 +144,7 @@ impl CityBuilder {
             Quat::IDENTITY,             // no rotation
             brick_textures.0.clone(),
             brick_textures.1.clone(),
-            0.5);
+            0.25);
         let new_city_object = CityObject{ object_handle };
         state.lock().unwrap().objects.push(new_city_object);          // keep around
         //  ***END TEMP***
