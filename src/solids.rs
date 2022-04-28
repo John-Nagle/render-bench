@@ -30,10 +30,9 @@ pub fn create_simple_block(
     offset: Vec3,                       // this offsets the coords in the mesh
     pos: Vec3,                          // position in transform
     rot: Quat,                          // rotation
-    albedo_handle: TextureHandle,       // albedo texture
-    normal_handle: TextureHandle,       // normal textures
-    texture_scale: f32,                 // texture scaling
+    texture_info: (&TextureHandle, &TextureHandle, f32),    // (albedo, normal, scale)
 ) -> ObjectHandle {
+    let (albedo_handle, normal_handle, texture_scale) = texture_info;   // unpack tuple
     println!("Add built-in object at {:?} size {:?}", pos, scale); // ***TEMP***
     let material = create_simple_material(renderer, albedo_handle, normal_handle);  // the texture
     let mesh = create_mesh(scale, offset, texture_scale);
@@ -47,14 +46,14 @@ pub fn create_simple_block(
 }
 
 /// Very simple texture, but a bit of shinyness.
-pub fn create_simple_material(renderer: &Renderer, albedo_handle: TextureHandle, normal_handle: TextureHandle) -> MaterialHandle {
+pub fn create_simple_material(renderer: &Renderer, albedo_handle: &TextureHandle, normal_handle: &TextureHandle) -> MaterialHandle {
     let diffuse_color = Vec4::ONE;                  // white
     //  Albedo from texture
     let albedo = AlbedoComponent::TextureValue {
-        texture: albedo_handle,
+        texture: albedo_handle.clone(),
         value: diffuse_color,
     };
-    let normal = NormalTexture::Tricomponent(normal_handle, Default::default());
+    let normal = NormalTexture::Tricomponent(normal_handle.clone(), Default::default());
     let pbr_material = PbrMaterial {
         albedo,
         normal,
