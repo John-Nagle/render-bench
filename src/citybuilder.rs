@@ -151,6 +151,7 @@ impl CityBuilder {
         stop_flag: Arc<AtomicBool>,
     ) {
         let brick_textures = state.lock().unwrap().textures.get("brick").unwrap().clone(); // get brick textures
+        let stone_textures = state.lock().unwrap().textures.get("stone").unwrap().clone(); // get brick textures
         let ground_textures = state
             .lock()
             .unwrap()
@@ -190,6 +191,7 @@ impl CityBuilder {
                 Vec3::new(WALL_WIDTH, 3.0, 0.2), // Brick wall
                 pos,
                 Quat::IDENTITY, // no rotation
+                (&stone_textures.0, &stone_textures.1, 0.25),
                 (&brick_textures.0, &brick_textures.1, 0.25),
             );
             state
@@ -218,6 +220,7 @@ impl CityBuilder {
             Vec3::new(WALL_WIDTH, 3.0, 0.2),
             story_pos,
             Quat::IDENTITY,
+            (&stone_textures.0, &stone_textures.1, 0.25),
             (&brick_textures.0, &brick_textures.1, 0.25),
         );
         state
@@ -241,6 +244,7 @@ impl CityBuilder {
                     Vec3::new(WALL_WIDTH, 3.0, 0.2),
                     story_pos,
                     Quat::IDENTITY,
+                    (&stone_textures.0, &stone_textures.1, 0.25),
                     (&brick_textures.0, &brick_textures.1, 0.25),
                 );
                 state
@@ -288,7 +292,8 @@ fn draw_one_story(
     size: Vec3,
     pos: Vec3,
     rot: Quat,
-    textures: (&TextureHandle, &TextureHandle, f32),
+    stone: (&TextureHandle, &TextureHandle, f32),
+    brick: (&TextureHandle, &TextureHandle, f32),
 ) -> Vec<ObjectHandle> {
     let width = size[0];
     let height = size[1];
@@ -304,7 +309,8 @@ fn draw_one_story(
             size,
             startpos + (itemrot * rot) * itemoffset,
             itemrot * rot,
-            textures,
+            stone,
+            brick,
         )
     };
     //  Front
@@ -367,7 +373,8 @@ fn draw_wall_section(
     size: Vec3,
     pos: Vec3,
     rot: Quat,
-    textures: (&TextureHandle, &TextureHandle, f32),
+    stone: (&TextureHandle, &TextureHandle, f32),
+    brick: (&TextureHandle, &TextureHandle, f32),
 ) -> Vec<ObjectHandle> {
     //  Precompute wall info
     let width = size[0];
@@ -382,7 +389,7 @@ fn draw_wall_section(
         Vec3::new(0.0, height / 2.0, 0.0),                     // base at zero
         pos,
         rot,
-        textures,
+        stone,
     )];
     // Draw wall section
     match wall_kind {
@@ -397,7 +404,7 @@ fn draw_wall_section(
                 Vec3::new((column_thickness + wall_width) / 2.0, height / 2.0, 0.0), // base at zero
                 pos,
                 rot,
-                textures,
+                brick,
             ));
         }
         WallKind::Door => {
@@ -414,7 +421,7 @@ fn draw_wall_section(
                 ), // base at zero
                 pos,
                 rot,
-                textures,
+                brick,
             ));
         }
         WallKind::Window => {
@@ -433,7 +440,7 @@ fn draw_wall_section(
                 ), // base at zero
                 pos,
                 rot,
-                textures,
+                brick,
             ));
             //  Bottom part
             objects.push(solids::create_simple_block(
@@ -446,7 +453,7 @@ fn draw_wall_section(
                 ), // base at zero
                 pos,
                 rot,
-                textures,
+                brick,
             ));
         }
     }
