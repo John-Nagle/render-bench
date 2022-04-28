@@ -150,16 +150,20 @@ impl CityBuilder {
         const WALL_WIDTH: f32 = 2.0;
         for i in 0..20 {
             let pos = Vec3::new(WALL_WIDTH*(i as f32), 0.0, 5.0);
-            let _object_handles = draw_wall_section(
+            let object_handles = draw_wall_section(
                 &renderer,
-                WallKind:: Window,
-                Vec3::new(1.5, 3.0, 0.2),          // Brick wall
+                WallKind::Window,
+                Vec3::new(WALL_WIDTH, 3.0, 0.2),          // Brick wall
                 pos,
                 Quat::IDENTITY,             // no rotation
                 (&brick_textures.0, &brick_textures.1, 0.25)
             );
-        }
+            state.lock().unwrap().objects
+                .extend(object_handles
+                .iter()
+                .map(|object_handle| CityObject { object_handle: object_handle.clone() }));   // keep objects around
             
+        }           
         //  ***END TEMP***
         loop {
             if stop_flag.load(Ordering::Relaxed) { break }          // shut down
@@ -172,6 +176,7 @@ impl CityBuilder {
 //  WallKind
 //
 enum WallKind {
+    None,
     Solid,
     Door,
     Window
@@ -181,16 +186,18 @@ enum WallKind {
 //
 /// Draw a wall section.
 //  A wall section has a column at the left.
+//  A row of these in the X direction makes a wall.
 //  Origin of the wall section is at the base of the column.
-fn draw_wall_section(renderer: &Renderer, wall_kind: WallKind, pos: Vec3, size: Vec3, rot: Quat, 
+fn draw_wall_section(renderer: &Renderer, wall_kind: WallKind, size: Vec3, pos: Vec3, rot: Quat, 
         textures: (&TextureHandle, &TextureHandle, f32)) -> Vec<ObjectHandle> {
+    //  Precompute wall info
     let width = size[0];
     let thickness = size[2];
     let height = size[1];
     let column_thickness = thickness*2.0;
     let wall_width = width-column_thickness;
     let mut objects = Vec::new();
-    //  Draw column
+    //  Draw column. Base of column is atop pos.
     objects.push(solids::create_simple_block(
         renderer,
         Vec3::new(column_thickness, height, column_thickness),  // size of column
@@ -200,6 +207,9 @@ fn draw_wall_section(renderer: &Renderer, wall_kind: WallKind, pos: Vec3, size: 
         textures.clone()));
     // Draw wall section
     match wall_kind {
+        WallKind::None => {
+            // Open section, no wall, just a column
+        }                       
         WallKind::Solid => {
             //  Solid wall section
             objects.push(solids::create_simple_block(
@@ -208,9 +218,7 @@ fn draw_wall_section(renderer: &Renderer, wall_kind: WallKind, pos: Vec3, size: 
                 Vec3::new(column_thickness + wall_width/2.0, height/2.0, 0.0),    // base at zero
                 pos,
                 rot,
-                (textures.0,
-                textures.1,
-                textures.2).clone()));
+                textures));
         }
         WallKind::Door => {
             //  Door. Open except for top part.
@@ -222,33 +230,29 @@ fn draw_wall_section(renderer: &Renderer, wall_kind: WallKind, pos: Vec3, size: 
                 Vec3::new(column_thickness + wall_width/2.0, opening_height + top_height/2.0, 0.0),    // base at zero
                 pos,
                 rot,
-                textures.clone()));
+                textures));
         }
         WallKind::Window => {
             //  Window. Open at vertical center.
             let opening_height = height*0.5;                         // height of window
-            let top_height = height - opening_height;
+            let top_height = height*0.25;
             let bottom_height = height - opening_height - top_height;
             //  Top part
             objects.push(solids::create_simple_block(
                 renderer,
                 Vec3::new(wall_width, top_height, thickness),  // size of window top
-                Vec3::new(column_thickness + wall_width/2.0, opening_height + top_height/2.0, 0.0),    // base at zero
+                Vec3::new((column_thickness + wall_width)/2.0, bottom_height + opening_height + top_height/2.0, 0.0),    // base at zero
                 pos,
                 rot,
-                (textures.0,
-                textures.1,
-                textures.2).clone()));
+                textures));
             //  Bottom part
             objects.push(solids::create_simple_block(
                 renderer,
                 Vec3::new(wall_width, bottom_height, thickness),  // size of window bottom
-                Vec3::new(column_thickness + wall_width/2.0, bottom_height/2.0, 0.0),    // base at zero
+                Vec3::new((column_thickness + wall_width)/2.0, bottom_height/2.0, 0.0),    // base at zero
                 pos,
                 rot,
-                (textures.0,
-                textures.1,
-                textures.2).clone()));
+                textures));
         }                      
     }
     objects                                 // return handles which keep objects alive
