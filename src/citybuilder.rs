@@ -409,7 +409,9 @@ fn draw_one_story(
             })
             .collect::<Vec<ObjectHandle>>(),
     );
-
+    //  Floor and ceiling
+    let floor_size = Vec3::new(front_width, 0.1, side_width);
+    objects.extend(draw_floor_and_ceiling(renderer, height, floor_size, pos, rot, textures));
     objects
 }
 
