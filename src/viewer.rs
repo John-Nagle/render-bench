@@ -34,23 +34,18 @@ use super::platform;
 //  Names of all the assets files.
 const SKYBOX_TEXTURES_DIR: &str = "/resources/skybox";
 const CITY_TEXTURES_DIR: &str = "/resources/city";
-const CITY_TEXTURES: [(&str, &str, &str); 4] = [
+const CITY_TEXTURES: [(&str, &str, &str); 6] = [
     ("brick", "redbrick_albedo.png", "redbrick_normal.png"),
     ("ground", "cobblestone_albedo.png", "cobblestone_normal.png"),
-    (
-        "whitemarble",
-        "white_marble_albedo.png",
-        "white_marble_normal.png",
-    ),
-    (
-        "greenmarble",
-        "green_marble_albedo.png",
-        "green_marble_normal.png",
-    ),
+    ("roof", "roof_gravel_albedo.png", "roof_gravel_normal.png"),
+    ("floor", "terracotta_floor_albedo.png", "terracotta_floor_normal.png"),
+    ("ceiling","ceiling_tiles_albedo.png", "ceiling_tiles_normal.png"),
+    ("stone", "white_stone_albedo.png", "white_stone_normal.png"),
 ];
 
 /// Load all faces of a skybox image. Output bytes as one big RGBA-ordered image.
 fn load_skybox_images(prefix: &str, filenames: &[&str]) -> Result<((u32, u32), Vec<u8>), Error> {
+    println!("Loading skybox textures.");
     use image::{EncodableLayout, GenericImageView};
     let mut v = Vec::new(); // accum bytes
     let mut dims: Option<(u32, u32)> = None; // size of objects
@@ -59,7 +54,6 @@ fn load_skybox_images(prefix: &str, filenames: &[&str]) -> Result<((u32, u32), V
     }
     for filename in filenames {
         let full_pathname = format!("{}/{}", prefix, filename);
-        println!("Skybox file: {}", full_pathname); // ***TEMP***
         let img = image::open(&full_pathname)
             .with_context(|| format!("Skybox file {}", full_pathname))?;
         //  Check that all images have the same dimensions

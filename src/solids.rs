@@ -4,7 +4,10 @@
 //
 //  Used for generating simple 3D scenes for benchmarking purposes.
 //
-use anyhow::Error;
+//  Animats
+//  April, 2022.
+//
+use anyhow::{Error, Context};
 use glam::{Mat3, Mat4, Quat, UVec2, Vec2, Vec3, Vec4};
 use rend3::{
     types::{
@@ -13,6 +16,7 @@ use rend3::{
     },
     Renderer,
 };
+use image::RgbaImage;
 
 use core::num::NonZeroU32;
 use rend3_routine::pbr::{AlbedoComponent, NormalTexture, PbrMaterial};
@@ -69,14 +73,24 @@ pub fn create_simple_material(
 }
 
 /// Create a simple texture for display. No normalization, etc.
-pub fn create_simple_texture(renderer: &Renderer, file_name: &str) -> Result<TextureHandle, Error> {
-    //  Read from file.
-    let img = image::io::Reader::open(file_name)?.decode()?;
-    let rgba = img.to_rgba8(); // to desired format
-                               //  Convert to Rend3 format.
+pub fn create_simple_texture(renderer: &Renderer, full_pathname: &str) -> Result<TextureHandle, Error> {
+    Ok(create_texture_from_rgba(renderer, full_pathname, read_texture(full_pathname)?))
+}
+
+/// Read texture, get RGBA
+pub fn read_texture(full_pathname: &str) -> Result<RgbaImage, Error> {
+    let img = image::io::Reader::open(full_pathname)
+    .with_context(|| format!("Texture file {}", full_pathname))?
+    .decode()?;
+    
+    Ok(img.to_rgba8())                     // return Rgb8
+}
+    
+/// Create texture from RGBA
+pub fn create_texture_from_rgba(renderer: &Renderer, label: &str, rgba: RgbaImage) -> TextureHandle {
     let mips = 1; // no mipmapping for now
     let texture = Texture {
-        label: Some(file_name.to_string()),
+        label: Some(label.to_string()),
         format: TextureFormat::Rgba8UnormSrgb, // per WGPU tutorial
         size: UVec2::new(rgba.width(), rgba.height()),
         data: rgba.into_raw(),
@@ -84,7 +98,7 @@ pub fn create_simple_texture(renderer: &Renderer, file_name: &str) -> Result<Tex
         mip_count: rend3::types::MipmapCount::Specific(NonZeroU32::new(mips).unwrap()),
         mip_source: rend3::types::MipmapSource::Uploaded,
     };
-    Ok(renderer.add_texture_2d(texture)) // put into GPU
+    renderer.add_texture_2d(texture)        // put into GPU
 }
 
 //  Create a mesh object with the appropriate scale and origin offset.

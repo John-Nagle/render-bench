@@ -122,14 +122,17 @@ impl CityBuilder {
         (
             tex.clone(),
             (
-                solids::create_simple_texture(renderer, &albedo_filename).unwrap(),
-                solids::create_simple_texture(renderer, &normal_filename).unwrap(),
+                solids::create_simple_texture(renderer, &albedo_filename)
+                    .unwrap_or_else(|err| panic!("Texture loading error: {:?}", err)),
+                solids::create_simple_texture(renderer, &normal_filename)
+                    .unwrap_or_else(|err| panic!("Texture loading error: {:?}", err))
             ),
         )
     }
 
     /// Pre-spawn initialization
     fn init(&mut self, renderer: &Renderer) {
+        println!("Loading texture files.");
         //  Load all the textures
         self.state.lock().unwrap().textures = self
             .params
@@ -137,6 +140,7 @@ impl CityBuilder {
             .iter()
             .map(|item| Self::load_texture(renderer, &self.params.texture_dir, item))
             .collect();
+        println!("Content loaded.");
     }
 
     /// Actually does the work
