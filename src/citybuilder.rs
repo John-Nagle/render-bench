@@ -213,24 +213,45 @@ fn draw_one_story(renderer: &Renderer, wall_spec: (&[WallKind], &[WallKind]), si
     let (front, side) = wall_spec;
     let mut objects = Vec::new();
     //  Draw each face, given offsets from input position
-    let draw_one_face = |itemoffset, itemrot, kind: &WallKind| 
-        draw_wall_section(renderer, *kind, size, pos + (itemrot*rot)*itemoffset, itemrot*rot, textures);
+    let draw_one_face = |startpos, itemoffset, itemrot, kind: &WallKind| 
+        draw_wall_section(renderer, *kind, size, startpos + (itemrot*rot)*itemoffset, itemrot*rot, textures);
     //  Front
     objects.extend(
         front.iter().enumerate().map(|(i, kind)| {
             let itemoffset = Vec3::new((i as f32)*width, 0.0, 0.0);
-            draw_one_face(itemoffset, Quat::IDENTITY, kind)
+            let startpos = pos;
+            println!("Startpos (front): {:?}", startpos);   // ***TEMP***
+            draw_one_face(startpos, itemoffset, Quat::IDENTITY, kind)
         }).flatten().collect::<Vec<ObjectHandle>>()
     );
-    /*
-    //  Side
+    //  Right side
     objects.extend(
         side.iter().enumerate().map(|(i, kind)| {
-            let itemoffset = Vec3::new((i as f32)*width, 0.0, 0.0);
-            draw_one_face(itemoffset, Quat::from_rotation_y(PI*0.5), kind)
+            let itemoffset = Vec3::new((i as f32)*width, 0.0, 0.0); // per item offset
+            let startpos = pos + rot*Vec3::new(((front.len() as f32)*width), 0.0, 0.0);
+            println!("Startpos (right): {:?}", startpos);   // ***TEMP***
+            draw_one_face(startpos, itemoffset, Quat::from_rotation_y(-PI*0.5), kind)
         }).flatten().collect::<Vec<ObjectHandle>>()          
     );
-    */
+    //  Back
+    objects.extend(
+        front.iter().enumerate().map(|(i, kind)| {
+            let itemoffset = Vec3::new((i as f32)*width, 0.0, 0.0); // per item offset
+            let startpos = pos + rot*Vec3::new(((front.len() as f32)*width), 0.0, ((side.len() as f32)*width));
+            println!("Startpos (back): {:?}", startpos);   // ***TEMP***
+            draw_one_face(startpos, itemoffset, Quat::from_rotation_y(-PI), kind)
+        }).flatten().collect::<Vec<ObjectHandle>>()          
+    );
+    //  Left side
+    objects.extend(
+        side.iter().enumerate().map(|(i, kind)| {
+            let itemoffset = Vec3::new((i as f32)*width, 0.0, 0.0); // per item offset
+            let startpos = pos + rot*Vec3::new(0.0, 0.0, ((side.len() as f32)*width));
+            println!("Startpos (left): {:?}", startpos);   // ***TEMP***
+            draw_one_face(startpos, itemoffset, Quat::from_rotation_y(-PI*1.5), kind)
+        }).flatten().collect::<Vec<ObjectHandle>>()          
+    );
+
     objects
 }
 

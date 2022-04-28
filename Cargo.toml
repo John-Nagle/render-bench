@@ -39,5 +39,4 @@ simplelog = "0.10.0"
 anyhow = "1.0"
 indoc = "1.0"
 cfg-if = "1.0"
-array-macro = "2.1.3"
 
