@@ -168,77 +168,44 @@ impl CityBuilder {
             Quat::IDENTITY,             // no rotation
             &city_textures.ground,
         );
-        //  ***TEMP TEST*** Make one brick block appear.
-        let object_handle = solids::create_simple_block(
-            &renderer,
-            Vec3::new(1.5, 3.0, 0.2), // Brick wall
-            Vec3::ZERO,
-            Vec3::new(5.0, 1.5, 0.0),
-            Quat::IDENTITY, // no rotation
-            &city_textures.brick,
-        );
-        let new_city_object = CityObject { object_handle };
-        state.lock().unwrap().objects.push(new_city_object); // keep around
-
-        //  Make a wall section appear
-        const WALL_WIDTH: f32 = 2.0;
-        for i in 0..20 {
-            let pos = Vec3::new(WALL_WIDTH * (i as f32), 0.0, 5.0);
-            let object_handles = draw_wall_section(
-                &renderer,
-                WallKind::Window,
-                Vec3::new(WALL_WIDTH, 3.0, 0.2), // Brick wall
-                pos,
-                Quat::IDENTITY, // no rotation
-                &city_textures,
-            );
-            state
-                .lock()
-                .unwrap()
-                .objects
-                .extend(object_handles.iter().map(|object_handle| CityObject {
-                    object_handle: object_handle.clone(),
-                })); // keep objects around
-        }
-
-        //  One story of a building
-        let wall_spec: (&[WallKind], &[WallKind]) = (
-            &[
-                WallKind::Door,
-                WallKind::Window,
-                WallKind::Solid,
-                WallKind::Solid,
-            ],
-            &[WallKind::Window, WallKind::Solid],
-        );
-        let story_pos = Vec3::new(0.0, 0.0, 25.0);
-        let story_object_handles = draw_one_story(
-            &renderer,
-            wall_spec,
-            Vec3::new(WALL_WIDTH, 3.0, 0.2),
-            story_pos,
-            Quat::IDENTITY,
-            &city_textures,
-        );
-        state
-            .lock()
-            .unwrap()
-            .objects
-            .extend(story_object_handles.iter().map(|object_handle| CityObject {
-                object_handle: object_handle.clone(),
-            })); // keep objects around
+        
+        let two_story_building ////: [(&[WallKind], &[WallKind])] 
+        = [
+            //  Ground floor
+            (
+                [
+                    WallKind::Door,
+                    WallKind::Window,
+                    WallKind::Solid,
+                    WallKind::Solid,
+                ].as_slice(),
+                [WallKind::Window, WallKind::Solid].as_slice(),
+            ),
+                //  Second floor
+            (
+                [
+                    WallKind::Window,
+                    WallKind::Window,
+                    WallKind::Window,
+                    WallKind::Window,
+                ].as_slice(),
+                [WallKind::Window, WallKind::Solid].as_slice(),
+            )          
+        ];
             
-        //  Multiple one-story buildings
+        //  Multiple  buildings
         const BLDG_ROWS: usize = 25;
         const BLDG_SPACING: f32 = 10.0;
+        const WALL_WIDTH: f32 = 2.0;    // one wall bay
+        const STORY_HEIGHT: f32 = 3.0;
         let bldg_initialpos = Vec3::new(-BLDG_SPACING*(BLDG_ROWS as f32)*0.5, 0.0, -BLDG_SPACING*(BLDG_ROWS as f32)*0.5); // center array
         for i in 0..BLDG_ROWS {
             for j in 0..BLDG_ROWS {
                 let story_pos = Vec3::new((i as f32)*BLDG_SPACING, 0.0, (j as f32)*BLDG_SPACING) + bldg_initialpos;
                 let story_object_handles = draw_building(
                     &renderer,
-                    &[wall_spec],
-                    Vec3::new(WALL_WIDTH, 3.0, 0.2),
+                    &two_story_building,
+                    Vec3::new(WALL_WIDTH, STORY_HEIGHT, 0.2),
                     story_pos,
                     Quat::IDENTITY,
                     &city_textures,
@@ -253,7 +220,6 @@ impl CityBuilder {
             
             }
         };
-                 //  ***END TEMP***
         loop {
             if stop_flag.load(Ordering::Relaxed) {
                 break;
@@ -350,6 +316,7 @@ fn draw_building(
     let width = size[0];
     let height = size[1];
     let thickness = size[2];
+    let stories = wall_specs.len();             // number of stories
     let mut objects = Vec::new();
     if wall_specs.is_empty() { return objects }     // zero stories, no draw
     let front_bays = wall_specs.last().unwrap().0.len();
@@ -363,7 +330,7 @@ fn draw_building(
     }
     //  Draw roof
     let floor_size = Vec3::new(front_width, 0.1, side_width);
-    objects.extend(draw_roof(renderer, height, thickness, floor_size, pos, rot, textures));
+    objects.extend(draw_roof(renderer, height*(stories as f32), thickness, floor_size, pos, rot, textures));
     objects
 }
 /// Draw one story of a building.
