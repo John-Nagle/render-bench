@@ -141,11 +141,9 @@ impl CityBuilder {
             Quat::IDENTITY,             // no rotation
             &city_textures.ground,
         );
-        
-        let two_story_building ////: [(&[WallKind], &[WallKind])] 
-        = [
-            //  Ground floor
-            (
+        //  Building specification.
+        //  When we get more ambitious, each building will be different.
+        let ground_floor = (
                 [
                     WallKind::Door,
                     WallKind::Window,
@@ -153,17 +151,23 @@ impl CityBuilder {
                     WallKind::Solid,
                 ].as_slice(),
                 [WallKind::Window, WallKind::Solid].as_slice(),
-            ),
-                //  Second floor
-            (
-                [
+            );
+        
+        let upper_stories = (
+             [
                     WallKind::Window,
                     WallKind::Window,
                     WallKind::Window,
                     WallKind::Window,
                 ].as_slice(),
-                [WallKind::Window, WallKind::Solid].as_slice(),
-            )          
+                [WallKind::Window, WallKind::Solid].as_slice()
+        );
+        let multi_story_building = [
+            ground_floor,
+            upper_stories.clone(),
+            upper_stories.clone(),
+            upper_stories.clone(), 
+            upper_stories.clone(),          
         ];
         const BLDG_ROWS: usize = 25;       
         /*  
@@ -195,7 +199,7 @@ impl CityBuilder {
         };
         */
         //  Draw first building rows once. Draw others and keep redrawing them.
-        let permanent_buildings = draw_building_grid(&renderer, 0..BLDG_ROWS/2, &two_story_building, &city_textures);
+        let permanent_buildings = draw_building_grid(&renderer, 0..BLDG_ROWS/2, &multi_story_building, &city_textures);
         loop {
             if stop_flag.load(Ordering::Relaxed) {
                 break;
@@ -205,7 +209,7 @@ impl CityBuilder {
             let mut temporary_buildings = {
                 profiling::scope!("Add buildings");
                 println!("Adding buildings.");
-                let result = draw_building_grid(&renderer, BLDG_ROWS/2..BLDG_ROWS, &two_story_building, &city_textures);
+                let result = draw_building_grid(&renderer, BLDG_ROWS/2..BLDG_ROWS, &multi_story_building, &city_textures);
                 println!("Adding buildings completed.");
                 result
             };
