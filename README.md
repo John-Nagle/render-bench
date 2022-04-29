@@ -8,7 +8,7 @@ Animats
 
 nagle@animats.com
 
-###Status - PRELIMINARY - 2022-04-28
+### PRELIMINARY - 2022-04-28
 
 ### A load test for Rend3/WGPU scene updating from another thread.
 
@@ -35,7 +35,7 @@ textures are shared, but meshes and materials are not.
 
 ### Results
 
-![First benchmark results](doc/screenshot1.jpg "First benchmark results")
+![First benchmark results](doc/slowupdate.png "First benchmark results")
 
 On a Linux machine with an NVidia 3070, the scene displays at 60 FPS.
 But while the other thread is adding buildings, that drops down to
