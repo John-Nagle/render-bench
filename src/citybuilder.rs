@@ -348,6 +348,7 @@ fn draw_one_story(
 ) -> Vec<ObjectHandle> {
     let width = size[0];
     let height = size[1];
+    let thickness = size[2];
     let (front, side) = wall_spec;
     let front_width = (front.len() as f32) * width;
     let side_width = (side.len() as f32) * width;
@@ -412,6 +413,7 @@ fn draw_one_story(
     //  Floor and ceiling
     let floor_size = Vec3::new(front_width, 0.1, side_width);
     objects.extend(draw_floor_and_ceiling(renderer, height, floor_size, pos, rot, textures));
+    objects.extend(draw_roof(renderer, height, thickness, floor_size, pos, rot, textures));
     objects
 }
 
@@ -540,6 +542,61 @@ fn draw_floor_and_ceiling(
         pos,
         rot,
         &textures.ceiling,
+    ),
+    ]
+}
+//  Pos is the same as for a story, the lower left hand corner.
+//  Floor texture on top, ceiling texture on bottom.
+fn draw_roof(
+    renderer: &Renderer,
+    height: f32,                // floor height
+    thickness: f32,             // of parapet, not roof
+    size: Vec3,
+    pos: Vec3,
+    rot: Quat,
+    textures: &CityTextures,
+) -> Vec<ObjectHandle> {
+    let center = size*0.5 + Vec3::new(0.0, height, 0.0);
+    vec![
+    solids::create_simple_block(        // roof
+        renderer,
+        Vec3::new(size[0]+thickness, thickness*0.5, size[2]+thickness),   // thin roof so as not to clash with parapet
+        center,
+        pos,
+        rot,
+        &textures.roof,
+    ),
+    solids::create_simple_block(        // front
+        renderer,
+        Vec3::new(size[0]+thickness*3.0, thickness, thickness), // strip along front
+        center - Vec3::new(0.0, 0.0, (size[2]+2.0*thickness)*0.5), // center pos
+        pos,
+        rot,
+        &textures.stone,
+    ),
+    solids::create_simple_block(        // back
+        renderer,
+        Vec3::new(size[0]+thickness*3.0, thickness, thickness), // strip along back
+        center - Vec3::new(0.0, 0.0, -(size[2]+2.0*thickness)*0.5), // center pos
+        pos,
+        rot,
+        &textures.stone,
+    ),
+    solids::create_simple_block(        // left side
+        renderer,
+        Vec3::new(thickness, thickness, size[2]+thickness), // strip along left side
+        center - Vec3::new((size[0]+2.0*thickness)*0.5, 0.0, 0.0), // center pos
+        pos,
+        rot,
+        &textures.stone,
+    ),
+    solids::create_simple_block(        // left side
+        renderer,
+        Vec3::new(thickness, thickness, size[2]+thickness), // strip along left side
+        center - Vec3::new(-(size[0]+2.0*thickness)*0.5, 0.0, 0.0), // center pos
+        pos,
+        rot,
+        &textures.stone,
     ),
     ]
 }
