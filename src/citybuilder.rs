@@ -22,7 +22,6 @@ use std::time::Duration;
 //  Supplied parameters for building the city
 #[derive(Debug, Clone)]
 pub struct CityParams {
-    building_count: usize,                        // number of buildings to generate
     texture_dir: String,                          // directory path to content
     texture_files: Vec<(String, String, String, f32)>, // texture name, albedo file, normal file, scale
 }
@@ -30,12 +29,10 @@ pub struct CityParams {
 impl CityParams {
     //  Params are (texture name, albedo file, normal file)
     pub fn new(
-        building_count: usize,
         texture_dir: String,
         texture_files: Vec<(&str, &str, &str, f32)>,
     ) -> CityParams {
         CityParams {
-            building_count,
             texture_dir,
             texture_files: texture_files
                 .iter()
@@ -45,12 +42,7 @@ impl CityParams {
     }
 }
 
-pub struct CityObject {
-    object_handle: ObjectHandle,
-}
-
 pub struct CityState {
-    pub objects: Vec<CityObject>, // the objects
     pub textures: TextureSetRgbaMap,            // map of all the textures, as ImageRgba, not TextureHandle
 }
 
@@ -58,7 +50,6 @@ impl CityState {
     /// Usual new
     pub fn new() -> CityState {
         CityState {
-            objects: Vec::new(),
             textures: HashMap::new(),
         }
     }
@@ -87,7 +78,7 @@ impl CityBuilder {
 
     /// Start and fire off threads.        
     pub fn start(&mut self, thread_count: usize, renderer: Arc<Renderer>) {
-        assert!(thread_count < 100); // sanity
+        assert!(thread_count == 1); // Only one building thread for now.
         self.init(&renderer); // any needed pre-thread init
         for n in 0..thread_count {
             profiling::scope!("Content creator");
@@ -170,62 +161,38 @@ impl CityBuilder {
             upper_stories.clone(),          
         ];
         const BLDG_ROWS: usize = 25;       
-        /*  
-        //  Multiple  buildings
-        const BLDG_SPACING: f32 = 10.0;
-        const WALL_WIDTH: f32 = 2.0;    // one wall bay
-        const STORY_HEIGHT: f32 = 3.0;
-        let bldg_initialpos = Vec3::new(-BLDG_SPACING*(BLDG_ROWS as f32)*0.5, 0.0, -BLDG_SPACING*(BLDG_ROWS as f32)*0.5); // center array
-        for i in 0..BLDG_ROWS {
-            for j in 0..BLDG_ROWS {
-                let story_pos = Vec3::new((i as f32)*BLDG_SPACING, 0.0, (j as f32)*BLDG_SPACING) + bldg_initialpos;
-                let story_object_handles = draw_building(
-                    &renderer,
-                    &two_story_building,
-                    Vec3::new(WALL_WIDTH, STORY_HEIGHT, 0.2),
-                    story_pos,
-                    Quat::IDENTITY,
-                    &city_textures,
-                );
-                state
-                    .lock()
-                    .unwrap()
-                    .objects
-                    .extend(story_object_handles.iter().map(|object_handle| CityObject {
-                     object_handle: object_handle.clone(),
-                    })); // keep objects around
-            
-            }
-        };
-        */
         //  Draw first building rows once. Draw others and keep redrawing them.
+        println!("Adding permanent buildings.");
         let permanent_buildings = draw_building_grid(&renderer, 0..BLDG_ROWS/2, &multi_story_building, &city_textures);
+        println!("Adding permanent buildings completed. {} meshes added.", permanent_buildings.len());
         loop {
             if stop_flag.load(Ordering::Relaxed) {
                 break;
             } // shut down
             //  Draw temporary buildings over and over.
-             
             let mut temporary_buildings = {
                 profiling::scope!("Add buildings");
                 println!("Adding buildings.");
                 let result = draw_building_grid(&renderer, BLDG_ROWS/2..BLDG_ROWS, &multi_story_building, &city_textures);
-                println!("Adding buildings completed.");
+                println!("Adding buildings completed. {} meshes added.", result.len());
                 result
             };
             {   profiling::scope!("Idle");
-                for i in 0..100 {
+                //  Wait for 10 seconds.
+                for _n in 0..100 {
                     if stop_flag.load(Ordering::Relaxed) { break; }
                     std::thread::sleep(Duration::from_millis(100)); 
                 }
             }
             {   profiling::scope!("Delete buildings");
                 println!("Deleting buildings.");
+                let cnt = temporary_buildings.len();
                 temporary_buildings.clear();                // drop bulidings
-                println!("Deleting buildings completed");
+                println!("Deleting buildings completed. {} meshes deleted.", cnt);
             }
             {   profiling::scope!("Idle");
-                for i in 0..100 {
+                //  Wait for 10 seconds.
+                for _n in 0..100 {
                     if stop_flag.load(Ordering::Relaxed) { break; }
                     std::thread::sleep(Duration::from_millis(100)); 
                 }
@@ -239,7 +206,6 @@ impl CityBuilder {
 //
 #[derive(Debug, Copy, Clone)]
 enum WallKind {
-    None,
     Solid,
     Door,
     Window,
@@ -483,9 +449,6 @@ fn draw_wall_section(
     )];
     // Draw wall section
     match wall_kind {
-        WallKind::None => {
-            // Open section, no wall, just a column
-        }
         WallKind::Solid => {
             //  Solid wall section
             objects.push(solids::create_simple_block(

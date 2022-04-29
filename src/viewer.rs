@@ -289,9 +289,7 @@ impl SceneViewer {
         }
 
         //  Parameters for city building
-        let building_count = 1; // ***TEMP***
         let city_params = CityParams::new(
-            building_count,
             env!("CARGO_MANIFEST_DIR").to_owned() + CITY_TEXTURES_DIR,
             CITY_TEXTURES.to_vec(),
         );
