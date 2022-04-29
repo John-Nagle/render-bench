@@ -5,7 +5,6 @@
 //
 //  Shared memory threaded targets only - no Android.
 //
-use profiling;
 use anyhow::{anyhow, Context, Error};
 use glam::{DVec2, Mat3A, Mat4, UVec2, Vec3, Vec3A};
 use pico_args::Arguments;

@@ -4,7 +4,6 @@
 //
 //  Used for generating simple 3D scenes for benchmarking purposes.
 //
-use profiling;
 use super::solids;
 use core::f32::consts::PI;
 use glam::{Quat, Vec3};
@@ -155,10 +154,10 @@ impl CityBuilder {
         );
         let multi_story_building = [
             ground_floor,
-            upper_stories.clone(),
-            upper_stories.clone(),
-            upper_stories.clone(), 
-            upper_stories.clone(),          
+            upper_stories,
+            upper_stories,
+            upper_stories, 
+            upper_stories,          
         ];
         const BLDG_ROWS: usize = 25;       
         //  Draw first building rows once. Draw others and keep redrawing them.
@@ -222,7 +221,7 @@ type TextureSetRgbaMap = HashMap<String, TextureSetRgba>;
 
 impl TextureSetRgba {
     //  Make a map with all the textures as Rgba images.
-    pub fn new_map(dir: &str, textures: &Vec<(String, String, String, f32)>) -> TextureSetRgbaMap {
+    pub fn new_map(dir: &str, textures: &[(String, String, String, f32)]) -> TextureSetRgbaMap {
     //  Read textures, save all RGBAs
         let mut output = HashMap::new();
         for (name, albedo_filename, normal_filename, texture_scale) in textures {    
@@ -288,7 +287,7 @@ fn draw_building_grid(
         for j in 0..BLDG_ROWS {
             let story_pos = Vec3::new((i as f32)*BLDG_SPACING, 0.0, (j as f32)*BLDG_SPACING) + bldg_initialpos;
             objects.extend(draw_building(
-                &renderer,
+                renderer,
                 wall_specs,
                 Vec3::new(WALL_WIDTH, STORY_HEIGHT, 0.2),
                 story_pos,
