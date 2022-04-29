@@ -235,9 +235,9 @@ impl CityBuilder {
         for i in 0..BLDG_ROWS {
             for j in 0..BLDG_ROWS {
                 let story_pos = Vec3::new((i as f32)*BLDG_SPACING, 0.0, (j as f32)*BLDG_SPACING) + bldg_initialpos;
-                let story_object_handles = draw_one_story(
+                let story_object_handles = draw_building(
                     &renderer,
-                    wall_spec,
+                    &[wall_spec],
                     Vec3::new(WALL_WIDTH, 3.0, 0.2),
                     story_pos,
                     Quat::IDENTITY,
@@ -333,6 +333,39 @@ impl CityTextures {
 //  Draw functions for various objects
 //
 
+//  Draw building
+//  The pattern in wall_specs determines the form of the building.
+//  Buildings are rectangular and consist of bays of windows, doors, or solid wall.
+//  The wall specs specify the number and type of front and side bays. The buildings are symmetrical.
+//  Multiple rows in the wall spec create a multi-story building.
+//  All floors should be the same size, although this is not enforced.
+fn draw_building(
+    renderer: &Renderer,
+    wall_specs: &[(&[WallKind], &[WallKind])],    // array of stories, going upward
+    size: Vec3,     // dimension of one floor
+    pos: Vec3,      // position
+    rot: Quat,      // orientation
+    textures: &CityTextures
+) -> Vec<ObjectHandle> {
+    let width = size[0];
+    let height = size[1];
+    let thickness = size[2];
+    let mut objects = Vec::new();
+    if wall_specs.is_empty() { return objects }     // zero stories, no draw
+    let front_bays = wall_specs.last().unwrap().0.len();
+    let side_bays = wall_specs.last().unwrap().1.len();
+    let front_width = (front_bays as f32) * width;
+    let side_width = (side_bays as f32) * width;
+    //  Draw the stories, per wall specs
+    for (n, wall_spec) in wall_specs.iter().enumerate() {
+        let story_pos = pos + rot*Vec3::new(0.0, height*(n as f32), 0.0);
+        objects.extend(draw_one_story(renderer, *wall_spec, size, story_pos, rot, textures));
+    }
+    //  Draw roof
+    let floor_size = Vec3::new(front_width, 0.1, side_width);
+    objects.extend(draw_roof(renderer, height, thickness, floor_size, pos, rot, textures));
+    objects
+}
 /// Draw one story of a building.
 //  A story is a rectangular set of wall sections.
 //  Specify door, window, solid sections.
@@ -413,7 +446,7 @@ fn draw_one_story(
     //  Floor and ceiling
     let floor_size = Vec3::new(front_width, 0.1, side_width);
     objects.extend(draw_floor_and_ceiling(renderer, height, floor_size, pos, rot, textures));
-    objects.extend(draw_roof(renderer, height, thickness, floor_size, pos, rot, textures));
+    ////objects.extend(draw_roof(renderer, height, thickness, floor_size, pos, rot, textures));
     objects
 }
 
