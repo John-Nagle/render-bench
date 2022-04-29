@@ -7,11 +7,11 @@
 use super::solids;
 use core::f32::consts::PI;
 use glam::{Quat, Vec3};
+use image::RgbaImage;
 use rend3::{
     types::{ObjectHandle, TextureHandle},
     Renderer,
 };
-use image::RgbaImage;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -21,28 +21,32 @@ use std::time::Duration;
 //  Supplied parameters for building the city
 #[derive(Debug, Clone)]
 pub struct CityParams {
-    texture_dir: String,                          // directory path to content
+    texture_dir: String,                               // directory path to content
     texture_files: Vec<(String, String, String, f32)>, // texture name, albedo file, normal file, scale
 }
 
 impl CityParams {
     //  Params are (texture name, albedo file, normal file)
-    pub fn new(
-        texture_dir: String,
-        texture_files: Vec<(&str, &str, &str, f32)>,
-    ) -> CityParams {
+    pub fn new(texture_dir: String, texture_files: Vec<(&str, &str, &str, f32)>) -> CityParams {
         CityParams {
             texture_dir,
             texture_files: texture_files
                 .iter()
-                .map(|item| (item.0.to_string(), item.1.to_string(), item.2.to_string(), item.3))
+                .map(|item| {
+                    (
+                        item.0.to_string(),
+                        item.1.to_string(),
+                        item.2.to_string(),
+                        item.3,
+                    )
+                })
                 .collect(),
         }
     }
 }
 
 pub struct CityState {
-    pub textures: TextureSetRgbaMap,            // map of all the textures, as ImageRgba, not TextureHandle
+    pub textures: TextureSetRgbaMap, // map of all the textures, as ImageRgba, not TextureHandle
 }
 
 impl CityState {
@@ -120,7 +124,7 @@ impl CityBuilder {
     ) {
         //  Convert all the textures from RGBA to texture handles.
         let city_textures = CityTextures::new_from_map(&renderer, &state.lock().unwrap().textures);
-        
+
         //  Make ground plane
         const WORLD_SIZE: f32 = 256.0; // one SL region size
         let _ground_handle = solids::create_simple_block(
@@ -134,66 +138,88 @@ impl CityBuilder {
         //  Building specification.
         //  When we get more ambitious, each building will be different.
         let ground_floor = (
-                [
-                    WallKind::Door,
-                    WallKind::Window,
-                    WallKind::Solid,
-                    WallKind::Solid,
-                ].as_slice(),
-                [WallKind::Window, WallKind::Solid].as_slice(),
-            );
-        
+            [
+                WallKind::Door,
+                WallKind::Window,
+                WallKind::Solid,
+                WallKind::Solid,
+            ]
+            .as_slice(),
+            [WallKind::Window, WallKind::Solid].as_slice(),
+        );
+
         let upper_stories = (
-             [
-                    WallKind::Window,
-                    WallKind::Window,
-                    WallKind::Window,
-                    WallKind::Window,
-                ].as_slice(),
-                [WallKind::Window, WallKind::Solid].as_slice()
+            [
+                WallKind::Window,
+                WallKind::Window,
+                WallKind::Window,
+                WallKind::Window,
+            ]
+            .as_slice(),
+            [WallKind::Window, WallKind::Solid].as_slice(),
         );
         let multi_story_building = [
             ground_floor,
             upper_stories,
             upper_stories,
-            upper_stories, 
-            upper_stories,          
+            upper_stories,
+            upper_stories,
         ];
-        const BLDG_ROWS: usize = 25;       
+        const BLDG_ROWS: usize = 25;
         //  Draw first building rows once. Draw others and keep redrawing them.
         println!("Adding permanent buildings.");
-        let permanent_buildings = draw_building_grid(&renderer, 0..BLDG_ROWS/2, &multi_story_building, &city_textures);
-        println!("Adding permanent buildings completed. {} meshes added.", permanent_buildings.len());
+        let permanent_buildings = draw_building_grid(
+            &renderer,
+            0..BLDG_ROWS / 2,
+            &multi_story_building,
+            &city_textures,
+        );
+        println!(
+            "Adding permanent buildings completed. {} meshes added.",
+            permanent_buildings.len()
+        );
         loop {
             if stop_flag.load(Ordering::Relaxed) {
                 break;
             } // shut down
-            //  Draw temporary buildings over and over.
+              //  Draw temporary buildings over and over.
             let mut temporary_buildings = {
                 profiling::scope!("Add buildings");
                 println!("Adding buildings.");
-                let result = draw_building_grid(&renderer, BLDG_ROWS/2..BLDG_ROWS, &multi_story_building, &city_textures);
+                let result = draw_building_grid(
+                    &renderer,
+                    BLDG_ROWS / 2..BLDG_ROWS,
+                    &multi_story_building,
+                    &city_textures,
+                );
                 println!("Adding buildings completed. {} meshes added.", result.len());
                 result
             };
-            {   profiling::scope!("Idle");
+            {
+                profiling::scope!("Idle");
                 //  Wait for 10 seconds.
                 for _n in 0..100 {
-                    if stop_flag.load(Ordering::Relaxed) { break; }
-                    std::thread::sleep(Duration::from_millis(100)); 
+                    if stop_flag.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    std::thread::sleep(Duration::from_millis(100));
                 }
             }
-            {   profiling::scope!("Delete buildings");
+            {
+                profiling::scope!("Delete buildings");
                 println!("Deleting buildings.");
                 let cnt = temporary_buildings.len();
-                temporary_buildings.clear();                // drop bulidings
+                temporary_buildings.clear(); // drop bulidings
                 println!("Deleting buildings completed. {} meshes deleted.", cnt);
             }
-            {   profiling::scope!("Idle");
+            {
+                profiling::scope!("Idle");
                 //  Wait for 10 seconds.
                 for _n in 0..100 {
-                    if stop_flag.load(Ordering::Relaxed) { break; }
-                    std::thread::sleep(Duration::from_millis(100)); 
+                    if stop_flag.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    std::thread::sleep(Duration::from_millis(100));
                 }
             }
         }
@@ -212,8 +238,8 @@ enum WallKind {
 
 /// Building textures
 pub struct TextureSetRgba {
-    albedo: RgbaImage,          // albedo image
-    normal: RgbaImage,          // normal image
+    albedo: RgbaImage, // albedo image
+    normal: RgbaImage, // normal image
     texture_scale: f32,
 }
 
@@ -222,38 +248,43 @@ type TextureSetRgbaMap = HashMap<String, TextureSetRgba>;
 impl TextureSetRgba {
     //  Make a map with all the textures as Rgba images.
     pub fn new_map(dir: &str, textures: &[(String, String, String, f32)]) -> TextureSetRgbaMap {
-    //  Read textures, save all RGBAs
+        //  Read textures, save all RGBAs
         let mut output = HashMap::new();
-        for (name, albedo_filename, normal_filename, texture_scale) in textures {    
+        for (name, albedo_filename, normal_filename, texture_scale) in textures {
             let texture_set = TextureSetRgba {
-                albedo: solids::read_texture(format!("{}/{}", dir, albedo_filename).as_str()).unwrap(),
-                normal: solids::read_texture(format!("{}/{}", dir, normal_filename).as_str()).unwrap(),
-                texture_scale: *texture_scale
+                albedo: solids::read_texture(format!("{}/{}", dir, albedo_filename).as_str())
+                    .unwrap(),
+                normal: solids::read_texture(format!("{}/{}", dir, normal_filename).as_str())
+                    .unwrap(),
+                texture_scale: *texture_scale,
             };
             output.insert(name.clone(), texture_set);
         }
         output
     }
 }
-pub type TextureSet = (TextureHandle, TextureHandle, f32);    // albedo, normal, scale
+pub type TextureSet = (TextureHandle, TextureHandle, f32); // albedo, normal, scale
 /// The textures we need for our little city.
 pub struct CityTextures {
-    stone: TextureSet,      // used for columns
-    brick: TextureSet,      // used for walls
-    floor: TextureSet,      // used for floors
-    ceiling: TextureSet,    // used for ceilings
-    roof: TextureSet,       // used for roofs
-    ground: TextureSet,     // used for ground
+    stone: TextureSet,   // used for columns
+    brick: TextureSet,   // used for walls
+    floor: TextureSet,   // used for floors
+    ceiling: TextureSet, // used for ceilings
+    roof: TextureSet,    // used for roofs
+    ground: TextureSet,  // used for ground
 }
 
 impl CityTextures {
     //  Make a new set of textures from an Rgba.
-    //  This duplicates the actual bitmaps, on purpose, to increase texture usage for load testing.   
+    //  This duplicates the actual bitmaps, on purpose, to increase texture usage for load testing.
     pub fn new_from_map(renderer: &Renderer, rgbas: &TextureSetRgbaMap) -> CityTextures {
-        let make_textures = |label: &str, item: &TextureSetRgba| (
-            solids::create_texture_from_rgba(renderer, label, &item.albedo),
-            solids::create_texture_from_rgba(renderer, label, &item.normal),
-            item.texture_scale);
+        let make_textures = |label: &str, item: &TextureSetRgba| {
+            (
+                solids::create_texture_from_rgba(renderer, label, &item.albedo),
+                solids::create_texture_from_rgba(renderer, label, &item.normal),
+                item.texture_scale,
+            )
+        };
         let get_textures = |key| make_textures(key, rgbas.get(key).unwrap());
         CityTextures {
             stone: get_textures("stone"),
@@ -261,7 +292,7 @@ impl CityTextures {
             floor: get_textures("floor"),
             ceiling: get_textures("ceiling"),
             roof: get_textures("roof"),
-            ground: get_textures("roof")
+            ground: get_textures("roof"),
         }
     }
 }
@@ -273,19 +304,24 @@ impl CityTextures {
 fn draw_building_grid(
     renderer: &Renderer,
     bldg_rows: core::ops::Range<usize>,
-    wall_specs: &[(&[WallKind], &[WallKind])],    // array of stories, going upwar
+    wall_specs: &[(&[WallKind], &[WallKind])], // array of stories, going upwar
     city_textures: &CityTextures,
 ) -> Vec<ObjectHandle> {
     //  Multiple  buildings
     const BLDG_ROWS: usize = 25;
     const BLDG_SPACING: f32 = 10.0;
-    const WALL_WIDTH: f32 = 2.0;    // one wall bay
+    const WALL_WIDTH: f32 = 2.0; // one wall bay
     const STORY_HEIGHT: f32 = 3.0;
     let mut objects = Vec::new();
-    let bldg_initialpos = Vec3::new(-BLDG_SPACING*(BLDG_ROWS as f32)*0.5, 0.0, -BLDG_SPACING*(BLDG_ROWS as f32)*0.5); // center array
+    let bldg_initialpos = Vec3::new(
+        -BLDG_SPACING * (BLDG_ROWS as f32) * 0.5,
+        0.0,
+        -BLDG_SPACING * (BLDG_ROWS as f32) * 0.5,
+    ); // center array
     for i in bldg_rows {
         for j in 0..BLDG_ROWS {
-            let story_pos = Vec3::new((i as f32)*BLDG_SPACING, 0.0, (j as f32)*BLDG_SPACING) + bldg_initialpos;
+            let story_pos = Vec3::new((i as f32) * BLDG_SPACING, 0.0, (j as f32) * BLDG_SPACING)
+                + bldg_initialpos;
             objects.extend(draw_building(
                 renderer,
                 wall_specs,
@@ -293,12 +329,11 @@ fn draw_building_grid(
                 story_pos,
                 Quat::IDENTITY,
                 city_textures,
-            ));            
+            ));
         }
-    };
+    }
     objects
 }
-
 
 //  Draw building
 //  The pattern in wall_specs determines the form of the building.
@@ -308,32 +343,44 @@ fn draw_building_grid(
 //  All floors should be the same size, although this is not enforced.
 fn draw_building(
     renderer: &Renderer,
-    wall_specs: &[(&[WallKind], &[WallKind])],    // array of stories, going upward
-    size: Vec3,     // dimension of one floor
-    pos: Vec3,      // position
-    rot: Quat,      // orientation
-    textures: &CityTextures
+    wall_specs: &[(&[WallKind], &[WallKind])], // array of stories, going upward
+    size: Vec3,                                // dimension of one floor
+    pos: Vec3,                                 // position
+    rot: Quat,                                 // orientation
+    textures: &CityTextures,
 ) -> Vec<ObjectHandle> {
     profiling::scope!("Add building");
     profiling::register_thread!();
     let width = size[0];
     let height = size[1];
     let thickness = size[2];
-    let stories = wall_specs.len();             // number of stories
+    let stories = wall_specs.len(); // number of stories
     let mut objects = Vec::new();
-    if wall_specs.is_empty() { return objects }     // zero stories, no draw
+    if wall_specs.is_empty() {
+        return objects;
+    } // zero stories, no draw
     let front_bays = wall_specs.last().unwrap().0.len();
     let side_bays = wall_specs.last().unwrap().1.len();
     let front_width = (front_bays as f32) * width;
     let side_width = (side_bays as f32) * width;
     //  Draw the stories, per wall specs
     for (n, wall_spec) in wall_specs.iter().enumerate() {
-        let story_pos = pos + rot*Vec3::new(0.0, height*(n as f32), 0.0);
-        objects.extend(draw_one_story(renderer, *wall_spec, size, story_pos, rot, textures));
+        let story_pos = pos + rot * Vec3::new(0.0, height * (n as f32), 0.0);
+        objects.extend(draw_one_story(
+            renderer, *wall_spec, size, story_pos, rot, textures,
+        ));
     }
     //  Draw roof
     let floor_size = Vec3::new(front_width, 0.1, side_width);
-    objects.extend(draw_roof(renderer, height*(stories as f32), thickness, floor_size, pos, rot, textures));
+    objects.extend(draw_roof(
+        renderer,
+        height * (stories as f32),
+        thickness,
+        floor_size,
+        pos,
+        rot,
+        textures,
+    ));
     objects
 }
 /// Draw one story of a building.
@@ -414,7 +461,9 @@ fn draw_one_story(
     );
     //  Floor and ceiling
     let floor_size = Vec3::new(front_width, 0.1, side_width);
-    objects.extend(draw_floor_and_ceiling(renderer, height, floor_size, pos, rot, textures));
+    objects.extend(draw_floor_and_ceiling(
+        renderer, height, floor_size, pos, rot, textures,
+    ));
     ////objects.extend(draw_roof(renderer, height, thickness, floor_size, pos, rot, textures));
     objects
 }
@@ -429,7 +478,7 @@ fn draw_wall_section(
     size: Vec3,
     pos: Vec3,
     rot: Quat,
-    textures: &CityTextures
+    textures: &CityTextures,
 ) -> Vec<ObjectHandle> {
     //  Precompute wall info
     let width = size[0];
@@ -517,85 +566,92 @@ fn draw_wall_section(
 //  Floor texture on top, ceiling texture on bottom.
 fn draw_floor_and_ceiling(
     renderer: &Renderer,
-    height: f32,                // floor height
+    height: f32, // floor height
     size: Vec3,
     pos: Vec3,
     rot: Quat,
     textures: &CityTextures,
 ) -> Vec<ObjectHandle> {
-    let thickness = size[1];            // thickness of floor
-    let center = size*0.5;              // center of block relative to pos
+    let thickness = size[1]; // thickness of floor
+    let center = size * 0.5; // center of block relative to pos
     vec![
-    solids::create_simple_block(        // floor
-        renderer,
-        size,
-        center + Vec3::new(0.0, - thickness*0.45, 0.0),
-        pos,
-        rot,
-        &textures.floor,
-    ),
-    solids::create_simple_block(        // ceiling
-        renderer,
-        size,
-        center + Vec3::new(0.0, height - thickness*0.55, 0.0),
-        pos,
-        rot,
-        &textures.ceiling,
-    ),
+        solids::create_simple_block(
+            // floor
+            renderer,
+            size,
+            center + Vec3::new(0.0, -thickness * 0.45, 0.0),
+            pos,
+            rot,
+            &textures.floor,
+        ),
+        solids::create_simple_block(
+            // ceiling
+            renderer,
+            size,
+            center + Vec3::new(0.0, height - thickness * 0.55, 0.0),
+            pos,
+            rot,
+            &textures.ceiling,
+        ),
     ]
 }
 //  Pos is the same as for a story, the lower left hand corner.
 //  Floor texture on top, ceiling texture on bottom.
 fn draw_roof(
     renderer: &Renderer,
-    height: f32,                // floor height
-    thickness: f32,             // of parapet, not roof
+    height: f32,    // floor height
+    thickness: f32, // of parapet, not roof
     size: Vec3,
     pos: Vec3,
     rot: Quat,
     textures: &CityTextures,
 ) -> Vec<ObjectHandle> {
-    let center = size*0.5 + Vec3::new(0.0, height, 0.0);
+    let center = size * 0.5 + Vec3::new(0.0, height, 0.0);
     vec![
-    solids::create_simple_block(        // roof
-        renderer,
-        Vec3::new(size[0]+thickness, thickness*0.5, size[2]+thickness),   // thin roof so as not to clash with parapet
-        center,
-        pos,
-        rot,
-        &textures.roof,
-    ),
-    solids::create_simple_block(        // front
-        renderer,
-        Vec3::new(size[0]+thickness*3.0, thickness, thickness), // strip along front
-        center - Vec3::new(0.0, 0.0, (size[2]+2.0*thickness)*0.5), // center pos
-        pos,
-        rot,
-        &textures.stone,
-    ),
-    solids::create_simple_block(        // back
-        renderer,
-        Vec3::new(size[0]+thickness*3.0, thickness, thickness), // strip along back
-        center - Vec3::new(0.0, 0.0, -(size[2]+2.0*thickness)*0.5), // center pos
-        pos,
-        rot,
-        &textures.stone,
-    ),
-    solids::create_simple_block(        // left side
-        renderer,
-        Vec3::new(thickness, thickness, size[2]+thickness), // strip along left side
-        center - Vec3::new((size[0]+2.0*thickness)*0.5, 0.0, 0.0), // center pos
-        pos,
-        rot,
-        &textures.stone,
-    ),
-    solids::create_simple_block(        // left side
-        renderer,
-        Vec3::new(thickness, thickness, size[2]+thickness), // strip along left side
-        center - Vec3::new(-(size[0]+2.0*thickness)*0.5, 0.0, 0.0), // center pos
-        pos,
-        rot,
-        &textures.stone,
-    ),
+        solids::create_simple_block(
+            // roof
+            renderer,
+            Vec3::new(size[0] + thickness, thickness * 0.5, size[2] + thickness), // thin roof so as not to clash with parapet
+            center,
+            pos,
+            rot,
+            &textures.roof,
+        ),
+        solids::create_simple_block(
+            // front
+            renderer,
+            Vec3::new(size[0] + thickness * 3.0, thickness, thickness), // strip along front
+            center - Vec3::new(0.0, 0.0, (size[2] + 2.0 * thickness) * 0.5), // center pos
+            pos,
+            rot,
+            &textures.stone,
+        ),
+        solids::create_simple_block(
+            // back
+            renderer,
+            Vec3::new(size[0] + thickness * 3.0, thickness, thickness), // strip along back
+            center - Vec3::new(0.0, 0.0, -(size[2] + 2.0 * thickness) * 0.5), // center pos
+            pos,
+            rot,
+            &textures.stone,
+        ),
+        solids::create_simple_block(
+            // left side
+            renderer,
+            Vec3::new(thickness, thickness, size[2] + thickness), // strip along left side
+            center - Vec3::new((size[0] + 2.0 * thickness) * 0.5, 0.0, 0.0), // center pos
+            pos,
+            rot,
+            &textures.stone,
+        ),
+        solids::create_simple_block(
+            // left side
+            renderer,
+            Vec3::new(thickness, thickness, size[2] + thickness), // strip along left side
+            center - Vec3::new(-(size[0] + 2.0 * thickness) * 0.5, 0.0, 0.0), // center pos
+            pos,
+            rot,
+            &textures.stone,
+        ),
     ]
 }

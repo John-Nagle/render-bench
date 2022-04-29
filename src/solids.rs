@@ -7,8 +7,9 @@
 //  Animats
 //  April, 2022.
 //
-use anyhow::{Error, Context};
+use anyhow::{Context, Error};
 use glam::{Mat3, Mat4, Quat, UVec2, Vec2, Vec3, Vec4};
+use image::RgbaImage;
 use rend3::{
     types::{
         MaterialHandle, Mesh, MeshBuilder, Object, ObjectHandle, Texture, TextureFormat,
@@ -16,7 +17,6 @@ use rend3::{
     },
     Renderer,
 };
-use image::RgbaImage;
 
 use core::num::NonZeroU32;
 use rend3_routine::pbr::{AlbedoComponent, NormalTexture, PbrMaterial};
@@ -26,19 +26,19 @@ use rend3_routine::pbr::{AlbedoComponent, NormalTexture, PbrMaterial};
 //  No instancing here.
 pub fn create_simple_block(
     renderer: &Renderer,
-    scale: Vec3,                                         // this rescales the actual mesh
-    offset: Vec3,                                        // this offsets the coords in the mesh
-    pos: Vec3,                                           // position in transform
-    rot: Quat,                                           // rotation
+    scale: Vec3,                                        // this rescales the actual mesh
+    offset: Vec3,                                       // this offsets the coords in the mesh
+    pos: Vec3,                                          // position in transform
+    rot: Quat,                                          // rotation
     texture_info: &(TextureHandle, TextureHandle, f32), // (albedo, normal, scale)
 ) -> ObjectHandle {
     profiling::scope!("Add block");
     let (albedo_handle, normal_handle, texture_scale) = texture_info; // unpack tuple
-    ////println!("Add built-in object at {:?} size {:?}", pos, scale); // ***TEMP***
+                                                                      ////println!("Add built-in object at {:?} size {:?}", pos, scale); // ***TEMP***
     let material = create_simple_material(renderer, albedo_handle, normal_handle); // the texture
     let mesh = create_mesh(scale, offset, *texture_scale);
-    let mesh_handle = 
-    {   profiling::scope!("Add mesh");    
+    let mesh_handle = {
+        profiling::scope!("Add mesh");
         renderer.add_mesh(mesh)
     };
     //  Add object to Rend3 system
@@ -81,14 +81,18 @@ pub fn create_simple_material(
 /// Read texture, get RGBA
 pub fn read_texture(full_pathname: &str) -> Result<RgbaImage, Error> {
     let img = image::io::Reader::open(full_pathname)
-    .with_context(|| format!("Texture file {}", full_pathname))?
-    .decode()?;
-    
-    Ok(img.to_rgba8())                     // return Rgb8
+        .with_context(|| format!("Texture file {}", full_pathname))?
+        .decode()?;
+
+    Ok(img.to_rgba8()) // return Rgb8
 }
-    
+
 /// Create texture from RGBA
-pub fn create_texture_from_rgba(renderer: &Renderer, label: &str, rgba: &RgbaImage) -> TextureHandle {
+pub fn create_texture_from_rgba(
+    renderer: &Renderer,
+    label: &str,
+    rgba: &RgbaImage,
+) -> TextureHandle {
     let mips = 1; // no mipmapping for now
     let texture = Texture {
         label: Some(label.to_string()),
@@ -100,7 +104,7 @@ pub fn create_texture_from_rgba(renderer: &Renderer, label: &str, rgba: &RgbaIma
         mip_source: rend3::types::MipmapSource::Uploaded,
     };
     profiling::scope!("Add texture");
-    renderer.add_texture_2d(texture)        // put into GPU
+    renderer.add_texture_2d(texture) // put into GPU
 }
 
 //  Create a mesh object with the appropriate scale and origin offset.

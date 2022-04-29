@@ -36,11 +36,36 @@ const SKYBOX_TEXTURES_DIR: &str = "/resources/skybox";
 const CITY_TEXTURES_DIR: &str = "/resources/city";
 const CITY_TEXTURES: [(&str, &str, &str, f32); 6] = [
     ("brick", "redbrick_albedo.png", "redbrick_normal.png", 0.25),
-    ("ground", "cobblestone_albedo.png", "cobblestone_normal.png", 0.25),
-    ("roof", "roof_gravel_albedo.png", "roof_gravel_normal.png", 0.25),
-    ("floor", "terracotta_floor_albedo.png", "terracotta_floor_normal.png", 0.25),
-    ("ceiling","ceiling_tiles_albedo.png", "ceiling_tiles_normal.png", 0.25),
-    ("stone", "white_stone_albedo.png", "white_stone_normal.png", 0.25),
+    (
+        "ground",
+        "cobblestone_albedo.png",
+        "cobblestone_normal.png",
+        0.25,
+    ),
+    (
+        "roof",
+        "roof_gravel_albedo.png",
+        "roof_gravel_normal.png",
+        0.25,
+    ),
+    (
+        "floor",
+        "terracotta_floor_albedo.png",
+        "terracotta_floor_normal.png",
+        0.25,
+    ),
+    (
+        "ceiling",
+        "ceiling_tiles_albedo.png",
+        "ceiling_tiles_normal.png",
+        0.25,
+    ),
+    (
+        "stone",
+        "white_stone_albedo.png",
+        "white_stone_normal.png",
+        0.25,
+    ),
 ];
 
 /// Load all faces of a skybox image. Output bytes as one big RGBA-ordered image.
