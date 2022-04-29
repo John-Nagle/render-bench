@@ -165,9 +165,9 @@ impl CityBuilder {
                 [WallKind::Window, WallKind::Solid].as_slice(),
             )          
         ];
-            
+        const BLDG_ROWS: usize = 25;       
+        /*  
         //  Multiple  buildings
-        const BLDG_ROWS: usize = 25;
         const BLDG_SPACING: f32 = 10.0;
         const WALL_WIDTH: f32 = 2.0;    // one wall bay
         const STORY_HEIGHT: f32 = 3.0;
@@ -193,11 +193,39 @@ impl CityBuilder {
             
             }
         };
+        */
+        //  Draw first building rows once. Draw others and keep redrawing them.
+        let permanent_buildings = draw_building_grid(&renderer, 0..BLDG_ROWS/2, &two_story_building, &city_textures);
         loop {
             if stop_flag.load(Ordering::Relaxed) {
                 break;
             } // shut down
-            std::thread::sleep(Duration::from_millis(10)); // ***TEMP TEST***
+            //  Draw temporary buildings over and over.
+             
+            let mut temporary_buildings = {
+                profiling::scope!("Add buildings");
+                println!("Adding buildings.");
+                let result = draw_building_grid(&renderer, BLDG_ROWS/2..BLDG_ROWS, &two_story_building, &city_textures);
+                println!("Adding buildings completed.");
+                result
+            };
+            {   profiling::scope!("Idle");
+                for i in 0..100 {
+                    if stop_flag.load(Ordering::Relaxed) { break; }
+                    std::thread::sleep(Duration::from_millis(100)); 
+                }
+            }
+            {   profiling::scope!("Delete buildings");
+                println!("Deleting buildings.");
+                temporary_buildings.clear();                // drop bulidings
+                println!("Deleting buildings completed");
+            }
+            {   profiling::scope!("Idle");
+                for i in 0..100 {
+                    if stop_flag.load(Ordering::Relaxed) { break; }
+                    std::thread::sleep(Duration::from_millis(100)); 
+                }
+            }
         }
     }
 }
@@ -271,6 +299,37 @@ impl CityTextures {
 //
 //  Draw functions for various objects
 //
+/// Draw a grid of buildings.
+//  Standard buildings, centered on the origin.
+fn draw_building_grid(
+    renderer: &Renderer,
+    bldg_rows: core::ops::Range<usize>,
+    wall_specs: &[(&[WallKind], &[WallKind])],    // array of stories, going upwar
+    city_textures: &CityTextures,
+) -> Vec<ObjectHandle> {
+    //  Multiple  buildings
+    const BLDG_ROWS: usize = 25;
+    const BLDG_SPACING: f32 = 10.0;
+    const WALL_WIDTH: f32 = 2.0;    // one wall bay
+    const STORY_HEIGHT: f32 = 3.0;
+    let mut objects = Vec::new();
+    let bldg_initialpos = Vec3::new(-BLDG_SPACING*(BLDG_ROWS as f32)*0.5, 0.0, -BLDG_SPACING*(BLDG_ROWS as f32)*0.5); // center array
+    for i in bldg_rows {
+        for j in 0..BLDG_ROWS {
+            let story_pos = Vec3::new((i as f32)*BLDG_SPACING, 0.0, (j as f32)*BLDG_SPACING) + bldg_initialpos;
+            objects.extend(draw_building(
+                &renderer,
+                wall_specs,
+                Vec3::new(WALL_WIDTH, STORY_HEIGHT, 0.2),
+                story_pos,
+                Quat::IDENTITY,
+                city_textures,
+            ));            
+        }
+    };
+    objects
+}
+
 
 //  Draw building
 //  The pattern in wall_specs determines the form of the building.

@@ -384,7 +384,7 @@ impl rend3_framework::App for SceneViewer {
         let renderer = Arc::clone(renderer);
         let routines = Arc::clone(routines);
         load_skybox(&renderer, &routines.skybox).unwrap(); // load the background skybox
-        let thread_count = 2; // ***TEMP***
+        let thread_count = 1; // ***TEMP***
         self.city_builder.start(thread_count, renderer); // start up the city generator
     }
 
