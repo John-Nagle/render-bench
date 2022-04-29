@@ -5,6 +5,7 @@
 //
 //  Shared memory threaded targets only - no Android.
 //
+use profiling;
 use anyhow::{anyhow, Context, Error};
 use glam::{DVec2, Mat3A, Mat4, UVec2, Vec3, Vec3A};
 use pico_args::Arguments;
@@ -635,6 +636,8 @@ impl rend3_framework::App for SceneViewer {
     ndk_glue::main(backtrace = "on", logger(level = "debug"))
 )]
 pub fn viewer() {
+    profiling::scope!("Refresh");
+    profiling::register_thread!();
     let app = SceneViewer::new();
 
     let mut builder = WindowBuilder::new()

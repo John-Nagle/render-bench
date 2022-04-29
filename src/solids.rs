@@ -32,12 +32,17 @@ pub fn create_simple_block(
     rot: Quat,                                           // rotation
     texture_info: &(TextureHandle, TextureHandle, f32), // (albedo, normal, scale)
 ) -> ObjectHandle {
+    profiling::scope!("Add block");
     let (albedo_handle, normal_handle, texture_scale) = texture_info; // unpack tuple
     ////println!("Add built-in object at {:?} size {:?}", pos, scale); // ***TEMP***
     let material = create_simple_material(renderer, albedo_handle, normal_handle); // the texture
     let mesh = create_mesh(scale, offset, *texture_scale);
-    let mesh_handle = renderer.add_mesh(mesh);
+    let mesh_handle = 
+    {   profiling::scope!("Add mesh");    
+        renderer.add_mesh(mesh)
+    };
     //  Add object to Rend3 system
+    profiling::scope!("Add object");
     renderer.add_object(Object {
         mesh_kind: rend3::types::ObjectMeshKind::Static(mesh_handle),
         material,
@@ -51,6 +56,7 @@ pub fn create_simple_material(
     albedo_handle: &TextureHandle,
     normal_handle: &TextureHandle,
 ) -> MaterialHandle {
+    profiling::scope!("Add material");
     let diffuse_color = Vec4::ONE; // white
                                    //  Albedo from texture
     let albedo = AlbedoComponent::TextureValue {
@@ -70,11 +76,6 @@ pub fn create_simple_material(
         ..Default::default()
     };
     renderer.add_material(pbr_material) // add material to Rend3 system
-}
-
-/// Create a simple texture for display. No normalization, etc.
-pub fn create_simple_texture(renderer: &Renderer, full_pathname: &str) -> Result<TextureHandle, Error> {
-    Ok(create_texture_from_rgba(renderer, full_pathname, &read_texture(full_pathname)?))
 }
 
 /// Read texture, get RGBA
@@ -98,6 +99,7 @@ pub fn create_texture_from_rgba(renderer: &Renderer, label: &str, rgba: &RgbaIma
         mip_count: rend3::types::MipmapCount::Specific(NonZeroU32::new(mips).unwrap()),
         mip_source: rend3::types::MipmapSource::Uploaded,
     };
+    profiling::scope!("Add texture");
     renderer.add_texture_2d(texture)        // put into GPU
 }
 

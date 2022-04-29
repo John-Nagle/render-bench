@@ -4,6 +4,7 @@
 //
 //  Used for generating simple 3D scenes for benchmarking purposes.
 //
+use profiling;
 use super::solids;
 use core::f32::consts::PI;
 use glam::{Quat, Vec3};
@@ -89,6 +90,8 @@ impl CityBuilder {
         assert!(thread_count < 100); // sanity
         self.init(&renderer); // any needed pre-thread init
         for n in 0..thread_count {
+            profiling::scope!("Content creator");
+            profiling::register_thread!();
             let renderer_clone = Arc::clone(&renderer);
             let state_clone = Arc::clone(&self.state);
             let stop_clone = Arc::clone(&self.stop_flag);
@@ -109,42 +112,12 @@ impl CityBuilder {
         println!("All worker threads shut down.");
     }
 
-    /// Load texture files. List of (texturename, albedo map, normal map)
-    /// Files should be power of 2 and square, PNG format.
-    /// Textures needed: "brick", "stone", "ground", "wood"
-    fn load_texture(
-        renderer: &Renderer,
-        dir: &str,
-        fileinfo: &(String, String, String),
-    ) -> (String, (TextureHandle, TextureHandle)) {
-        let (tex, albedo_name, normal_name) = fileinfo;
-        let albedo_filename = format!("{}/{}", dir, albedo_name);
-        let normal_filename = format!("{}/{}", dir, normal_name);
-        (
-            tex.clone(),
-            (
-                solids::create_simple_texture(renderer, &albedo_filename)
-                    .unwrap_or_else(|err| panic!("Texture loading error: {:?}", err)),
-                solids::create_simple_texture(renderer, &normal_filename)
-                    .unwrap_or_else(|err| panic!("Texture loading error: {:?}", err))
-            ),
-        )
-    }
-
     /// Pre-spawn initialization
-    fn init(&mut self, renderer: &Renderer) {
+    fn init(&mut self, _renderer: &Renderer) {
         println!("Loading texture files.");
         //  Load all the textures
         self.state.lock().unwrap().textures =
             TextureSetRgba::new_map(&self.params.texture_dir, &self.params.texture_files);
-        /*
-        self.state.lock().unwrap().textures = self
-            .params
-            .texture_files
-            .iter()
-            .map(|item| Self::load_texture(renderer, &self.params.texture_dir, item))
-            .collect();
-        */
         println!("Content loaded.");
     }
 
@@ -152,7 +125,7 @@ impl CityBuilder {
     fn run(
         state: Arc<Mutex<CityState>>,
         renderer: Arc<Renderer>,
-        id: usize,
+        _id: usize,
         stop_flag: Arc<AtomicBool>,
     ) {
         //  Convert all the textures from RGBA to texture handles.
@@ -313,6 +286,8 @@ fn draw_building(
     rot: Quat,      // orientation
     textures: &CityTextures
 ) -> Vec<ObjectHandle> {
+    profiling::scope!("Add building");
+    profiling::register_thread!();
     let width = size[0];
     let height = size[1];
     let thickness = size[2];
@@ -348,7 +323,6 @@ fn draw_one_story(
 ) -> Vec<ObjectHandle> {
     let width = size[0];
     let height = size[1];
-    let thickness = size[2];
     let (front, side) = wall_spec;
     let front_width = (front.len() as f32) * width;
     let side_width = (side.len() as f32) * width;
