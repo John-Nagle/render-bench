@@ -31,6 +31,8 @@ use super::platform;
 //
 //  Constants
 //
+const AMBIENT_LEVEL: f32 = 0.25; // some ambient lighting, not too much
+const SAMPLE_COUNT: rend3::types::SampleCount = rend3::types::SampleCount::Four; // anti-aliasing
 //  Names of all the assets files.
 const SKYBOX_TEXTURES_DIR: &str = "/resources/skybox";
 const CITY_TEXTURES_DIR: &str = "/resources/city";
@@ -103,7 +105,7 @@ fn load_skybox_images(prefix: &str, filenames: &[&str]) -> Result<((u32, u32), V
 }
 
 /// Load the skybox from individual images.
-fn load_skybox(renderer: &Renderer, skybox_routine: &Mutex<SkyboxRoutine>) -> Result<(), Error> {
+fn load_skybox(renderer: &Arc<Renderer>, skybox_routine: &Mutex<SkyboxRoutine>) -> Result<(), Error> {
     let prefix = env!("CARGO_MANIFEST_DIR").to_owned() + SKYBOX_TEXTURES_DIR; // filename prefix
     let skybox_files: [&str; 6] = [
         "right.jpg",
@@ -386,11 +388,22 @@ impl rend3_framework::App for SceneViewer {
 
     fn setup<'a>(
         &'a mut self,
+        event_loop: &winit::event_loop::EventLoop<rend3_framework::UserResizeEvent<()>>,
+        window: &winit::window::Window,
+        renderer: &Arc<rend3::Renderer>,
+        routines: &Arc<rend3_framework::DefaultRoutines>,
+        surface_format: rend3::types::TextureFormat,
+    ) {
+/*
+    
+    
+        &'a mut self,
         window: &'a winit::window::Window,
         renderer: &'a Arc<Renderer>,
         routines: &'a Arc<rend3_framework::DefaultRoutines>,
         _surface_format: rend3::types::TextureFormat,
     ) {
+*/
         self.grabber = Some(rend3_framework::Grabber::new(window));
 
         const SUN_SHADOW_DISTANCE: f32 = 300.0;
@@ -399,6 +412,7 @@ impl rend3_framework::App for SceneViewer {
                 color: Vec3::splat(1.0),
                 intensity: self.directional_light_intensity,
                 direction,
+                resolution: 2048,       // ***NOT SURE ABOUT THIS***
                 distance: SUN_SHADOW_DISTANCE,
             }));
         }
@@ -528,21 +542,30 @@ impl rend3_framework::App for SceneViewer {
                 });
 
                 // Get a frame
+                /*
                 let frame = rend3::util::output::OutputFrame::Surface {
                     surface: Arc::clone(surface.unwrap()),
                 };
+                */
+                let frame = surface.unwrap().get_current_texture().unwrap();
                 // Lock all the routines
                 let pbr_routine = lock(&routines.pbr);
                 let mut skybox_routine = lock(&routines.skybox);
                 let tonemapping_routine = lock(&routines.tonemapping);
+                // Swap the instruction buffers so that our frame's changes can be processed.
+                renderer.swap_instruction_buffers();
+                // Evaluate our frame's world-change instructions
+                let mut eval_output = renderer.evaluate_instructions();
+                /*
+                skybox_routine.evaluate(renderer);
 
                 // Ready up the renderer
                 let (cmd_bufs, ready) = renderer.ready();
                 // Ready up the routines
                 skybox_routine.ready(renderer);
-
                 // Build a rendergraph
                 let mut graph = rend3::graph::RenderGraph::new();
+                               
 
                 // Add the default rendergraph
                 base_rendergraph.add_to_graph(
@@ -555,9 +578,39 @@ impl rend3_framework::App for SceneViewer {
                     self.samples,
                     Vec3::splat(self.ambient_light_level).extend(1.0),
                 );
+                */
+                // Build a rendergraph
+                let mut graph = rend3::graph::RenderGraph::new();
 
+                // Import the surface texture into the render graph.
+                let frame_handle = graph.add_imported_render_target(
+                    &frame,
+                    0..1,
+                    rend3::graph::ViewportRect::from_size(resolution),
+                );
+
+                // Add the default rendergraph without a skybox
+                base_rendergraph.add_to_graph(
+                    &mut graph,
+                    &eval_output,
+                    &pbr_routine,
+                    Some(&skybox_routine),
+                    &tonemapping_routine,
+                    frame_handle,
+                    resolution,
+                    SAMPLE_COUNT,
+                    glam::Vec3::splat(AMBIENT_LEVEL).extend(1.0), // ambient color
+                    glam::Vec4::new(0.10, 0.05, 0.10, 1.0), // Purple. If seen, we have a problem.
+                );
+                // Dispatch a render using the built up rendergraph!
+                graph.execute(renderer, &mut eval_output);
+                // Present the frame
+                frame.present();
+
+                /*
                 // Dispatch a render using the built up rendergraph!
                 self.previous_profiling_stats = graph.execute(renderer, frame, cmd_bufs, &ready);
+                */
                 // mark the end of the frame for tracy/other profilers
                 profiling::finish_frame!();
             }
