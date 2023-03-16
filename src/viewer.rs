@@ -31,7 +31,6 @@ use super::platform;
 //
 //  Constants
 //
-const AMBIENT_LEVEL: f32 = 0.25; // some ambient lighting, not too much
 const SAMPLE_COUNT: rend3::types::SampleCount = rend3::types::SampleCount::Four; // anti-aliasing
 //  Names of all the assets files.
 const SKYBOX_TEXTURES_DIR: &str = "/resources/skybox";
@@ -388,11 +387,11 @@ impl rend3_framework::App for SceneViewer {
 
     fn setup<'a>(
         &'a mut self,
-        event_loop: &winit::event_loop::EventLoop<rend3_framework::UserResizeEvent<()>>,
+        _event_loop: &winit::event_loop::EventLoop<rend3_framework::UserResizeEvent<()>>,
         window: &winit::window::Window,
         renderer: &Arc<rend3::Renderer>,
         routines: &Arc<rend3_framework::DefaultRoutines>,
-        surface_format: rend3::types::TextureFormat,
+        _surface_format: rend3::types::TextureFormat,
     ) {
 /*
     
@@ -525,6 +524,7 @@ impl rend3_framework::App for SceneViewer {
                 window.request_redraw()
             }
             Event::RedrawRequested(_) => {
+                profiling::scope!("Redraw");
                 let view = Mat4::from_euler(
                     glam::EulerRot::XYZ,
                     -self.camera_pitch,
@@ -550,7 +550,7 @@ impl rend3_framework::App for SceneViewer {
                 let frame = surface.unwrap().get_current_texture().unwrap();
                 // Lock all the routines
                 let pbr_routine = lock(&routines.pbr);
-                let mut skybox_routine = lock(&routines.skybox);
+                let skybox_routine = lock(&routines.skybox);
                 let tonemapping_routine = lock(&routines.tonemapping);
                 // Swap the instruction buffers so that our frame's changes can be processed.
                 renderer.swap_instruction_buffers();
@@ -599,10 +599,11 @@ impl rend3_framework::App for SceneViewer {
                     frame_handle,
                     resolution,
                     SAMPLE_COUNT,
-                    glam::Vec3::splat(AMBIENT_LEVEL).extend(1.0), // ambient color
+                    glam::Vec3::splat(self.ambient_light_level).extend(1.0), // ambient color
                     glam::Vec4::new(0.10, 0.05, 0.10, 1.0), // Purple. If seen, we have a problem.
                 );
                 // Dispatch a render using the built up rendergraph!
+                profiling::scope!("Graph Execute");
                 graph.execute(renderer, &mut eval_output);
                 // Present the frame
                 frame.present();
