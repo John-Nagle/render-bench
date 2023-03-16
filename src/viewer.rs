@@ -550,15 +550,14 @@ impl rend3_framework::App for SceneViewer {
                 let frame = surface.unwrap().get_current_texture().unwrap();
                 // Lock all the routines
                 let pbr_routine = lock(&routines.pbr);
-                let skybox_routine = lock(&routines.skybox);
+                let mut skybox_routine = lock(&routines.skybox);
                 let tonemapping_routine = lock(&routines.tonemapping);
                 // Swap the instruction buffers so that our frame's changes can be processed.
                 renderer.swap_instruction_buffers();
                 // Evaluate our frame's world-change instructions
                 let mut eval_output = renderer.evaluate_instructions();
-                /*
                 skybox_routine.evaluate(renderer);
-
+                /*
                 // Ready up the renderer
                 let (cmd_bufs, ready) = renderer.ready();
                 // Ready up the routines
