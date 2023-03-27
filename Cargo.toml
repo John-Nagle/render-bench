@@ -18,10 +18,9 @@ profiling = { version = "1", default-features = false }
 
 #   Compatible with Rend3 0.3.0's Cargo.toml file as of 2023-03-09.
 #   Must match libscene and libdialog.
-rend3 = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "4d10795" }
-rend3-egui = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "4d10795" }
-rend3-framework = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "4d10795" }
-rend3-routine = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "4d10795" }
+rend3 = "^0.3.0"
+rend3-framework = "^0.3.0" 
+rend3-routine = "^0.3.0"
 # Winit integration with egui (turn off the clipboard feature)
 egui-winit = { version = "0.21", default-features = false, features = ["links", "wayland"] }
 #   Try to get rid of this. It's only used for one texture enum.	
@@ -40,8 +39,6 @@ rust-embed = { version = "6", features = ["debug-embed"]}
 winit = "0.28"
 #   End of Rend3 compatibilty section.
 #### web-sys = "0.3.61"
-
-
 
 rustc-hash = "1"
 smallvec = "1"
@@ -62,3 +59,8 @@ anyhow = "1.0"
 indoc = "1.0"
 cfg-if = "1.0"
 
+[patch.crates-io]
+# c2c2d3237
+rend3 = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "c2c2d3237" }
+rend3-framework = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "c2c2d3237" }
+rend3-routine = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "c2c2d3237" }
