@@ -24,13 +24,13 @@ rend3-routine = "^0.3.0"
 # Winit integration with egui (turn off the clipboard feature)
 egui-winit = { version = "0.21", default-features = false, features = ["links", "wayland"] }
 #   Try to get rid of this. It's only used for one texture enum.	
-wgpu = "0.15"
+wgpu = "0.16.1"
 # Importing png's
 image = { version = "0.24.3", default-features = false, features = ["png", "jpeg"] }
 # Portable implementation of Instant.
 instant = { version = "0.1", unix = ["wasm-bindgen"] }
 egui = "0.21.0"
-glam = { version = "0.22", features = ["bytemuck", "serde"]}
+glam = { version = "0.24", features = ["bytemuck", "serde"]}
 #   Embedding shaders. This forces shaders to be compiled into the executable
 #   rather than loaded at run time. That's because rust-embed won't work cross platoform
 #   where source and target file systems are different. Version must match that used in rend3 so 
@@ -44,7 +44,7 @@ rustc-hash = "1"
 smallvec = "1"
 tracy-client = {version = "0.12", optional = true }
 #### wgpu-profiler = "0.8.0"
-wgpu-profiler = "0.11.0"
+wgpu-profiler = "0.12.0"
 
 #   Others
 argparse = "0.2.2"
@@ -53,7 +53,7 @@ obj = "0.10.2"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 sha3 = "0.9.1"
 generic-array = "0.14.4"
-log = "0.4.14"
+log = "0.4"
 simplelog = "0.10.0"
 anyhow = "1.0"
 indoc = "1.0"
@@ -61,6 +61,6 @@ cfg-if = "1.0"
 
 [patch.crates-io]
 # c2c2d3237
-rend3 = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "c2c2d3237" }
-rend3-framework = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "c2c2d3237" }
-rend3-routine = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "c2c2d3237" }
+rend3 = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "2d6c7f7" }
+rend3-framework = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "2d6c7f7" }
+rend3-routine = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "2d6c7f7" }
