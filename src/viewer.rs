@@ -541,17 +541,19 @@ impl rend3_framework::App for SceneViewer {
                 ////    surface: Arc::clone(surface.unwrap()),
                 ////};
                 let frame = surface.unwrap().get_current_texture().unwrap();
-                renderer.swap_instruction_buffers();
                 // Evaluate our frame's world-change instructions
-                let mut eval_output = renderer.evaluate_instructions();
                 // Lock all the routines
                 let pbr_routine = lock(&routines.pbr);
                 let mut skybox_routine = lock(&routines.skybox);
                 let tonemapping_routine = lock(&routines.tonemapping);
+                //  Swap the instruction buffers. This begins a new frame.
+                renderer.swap_instruction_buffers();
+
 
                 // Ready up the renderer
                 ////let (cmd_bufs, ready) = renderer.ready();
                 // Ready up the routines
+                let mut eval_output = renderer.evaluate_instructions();
                 skybox_routine.evaluate(renderer);
 
                 // Build a rendergraph
