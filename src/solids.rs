@@ -122,7 +122,7 @@ pub fn create_mesh(scale: Vec3, offset: Vec3, texture_scale: f32) -> Mesh {
     MeshBuilder::new(vertex_positions.to_vec(), rend3::types::Handedness::Left)
         .with_indices(UNIT_CUBE_INDICES.to_vec())
         .with_vertex_normals(normals)
-        .with_vertex_uv0(uvs)
+        .with_vertex_texture_coordinates_0(uvs)
         .build()
         .unwrap()
 }

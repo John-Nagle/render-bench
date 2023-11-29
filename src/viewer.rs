@@ -6,7 +6,7 @@
 //  Shared memory threaded targets only - no Android.
 //
 use anyhow::{anyhow, Context, Error};
-use glam::{DVec2, Mat3A, Mat4, UVec2, Vec3, Vec3A};
+use glam::{DVec2, Mat3A, Mat4, UVec2, Vec3, Vec4, Vec3A};
 use pico_args::Arguments;
 use rend3::{
     types::{
@@ -386,6 +386,7 @@ impl rend3_framework::App for SceneViewer {
 
     fn setup<'a>(
         &'a mut self,
+        _event_loop: &winit::event_loop::EventLoop<rend3_framework::UserResizeEvent<()>>,
         window: &'a winit::window::Window,
         renderer: &'a Arc<Renderer>,
         routines: &'a Arc<rend3_framework::DefaultRoutines>,
@@ -406,6 +407,13 @@ impl rend3_framework::App for SceneViewer {
 
         let renderer = Arc::clone(renderer);
         let routines = Arc::clone(routines);
+        window.set_visible(true);
+        window.set_maximized(true);
+        ////window.set_decorations(false);
+        ////window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(None)));
+        let _window_size = window.inner_size();       
+        
+        
         load_skybox(&renderer, &routines.skybox).unwrap(); // load the background skybox
         let thread_count = 1; // ***TEMP***
         self.city_builder.start(thread_count, renderer); // start up the city generator
@@ -529,37 +537,49 @@ impl rend3_framework::App for SceneViewer {
                 });
 
                 // Get a frame
-                let frame = rend3::util::output::OutputFrame::Surface {
-                    surface: Arc::clone(surface.unwrap()),
-                };
+                ////let frame = rend3::util::output::OutputFrame::Surface {
+                ////    surface: Arc::clone(surface.unwrap()),
+                ////};
+                let frame = surface.unwrap().get_current_texture().unwrap();
+                renderer.swap_instruction_buffers();
+                // Evaluate our frame's world-change instructions
+                let mut eval_output = renderer.evaluate_instructions();
                 // Lock all the routines
                 let pbr_routine = lock(&routines.pbr);
                 let mut skybox_routine = lock(&routines.skybox);
                 let tonemapping_routine = lock(&routines.tonemapping);
 
                 // Ready up the renderer
-                let (cmd_bufs, ready) = renderer.ready();
+                ////let (cmd_bufs, ready) = renderer.ready();
                 // Ready up the routines
-                skybox_routine.ready(renderer);
+                skybox_routine.evaluate(renderer);
 
                 // Build a rendergraph
                 let mut graph = rend3::graph::RenderGraph::new();
+                
+                // Import the surface texture into the render graph.
+                let frame_handle =
+                    graph.add_imported_render_target(&frame, 0..1, 0..1,
+                     rend3::graph::ViewportRect::from_size(resolution));
 
                 // Add the default rendergraph
                 base_rendergraph.add_to_graph(
                     &mut graph,
-                    &ready,
+                    &eval_output,
                     &pbr_routine,
                     Some(&skybox_routine),
                     &tonemapping_routine,
+                    frame_handle,
                     resolution,
                     self.samples,
                     Vec3::splat(self.ambient_light_level).extend(1.0),
+                    Vec4::new(0.10, 0.05, 0.10, 1.0), // Nice scene-referred purple
                 );
 
                 // Dispatch a render using the built up rendergraph!
-                self.previous_profiling_stats = graph.execute(renderer, frame, cmd_bufs, &ready);
+                ////self.previous_profiling_stats = graph.execute(renderer, frame, cmd_bufs, &ready);
                 // mark the end of the frame for tracy/other profilers
+                self.previous_profiling_stats = graph.execute(renderer, &mut eval_output);
                 profiling::finish_frame!();
             }
             Event::WindowEvent {
