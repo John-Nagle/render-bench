@@ -277,7 +277,7 @@ pub struct CityTextures {
 impl CityTextures {
     //  Make a new set of textures from an Rgba.
     //  This duplicates the actual bitmaps, on purpose, to increase texture usage for load testing.
-    pub fn new_from_map(renderer: &Renderer, rgbas: &TextureSetRgbaMap) -> CityTextures {
+    pub fn new_from_map(renderer: &Arc<Renderer>, rgbas: &TextureSetRgbaMap) -> CityTextures {
         let make_textures = |label: &str, item: &TextureSetRgba| {
             (
                 solids::create_texture_from_rgba(renderer, label, &item.albedo),
@@ -302,7 +302,7 @@ impl CityTextures {
 /// Draw a grid of buildings.
 //  Standard buildings, centered on the origin.
 fn draw_building_grid(
-    renderer: &Renderer,
+    renderer: &Arc<Renderer>,
     bldg_rows: core::ops::Range<usize>,
     wall_specs: &[(&[WallKind], &[WallKind])], // array of stories, going upwar
     city_textures: &CityTextures,
@@ -342,7 +342,7 @@ fn draw_building_grid(
 //  Multiple rows in the wall spec create a multi-story building.
 //  All floors should be the same size, although this is not enforced.
 fn draw_building(
-    renderer: &Renderer,
+    renderer: &Arc<Renderer>,
     wall_specs: &[(&[WallKind], &[WallKind])], // array of stories, going upward
     size: Vec3,                                // dimension of one floor
     pos: Vec3,                                 // position
@@ -389,7 +389,7 @@ fn draw_building(
 //  Specify two sides; the other side is mirrored.
 //
 fn draw_one_story(
-    renderer: &Renderer,
+    renderer: &Arc<Renderer>,
     wall_spec: (&[WallKind], &[WallKind]),
     size: Vec3,
     pos: Vec3,
@@ -473,7 +473,7 @@ fn draw_one_story(
 //  A row of these in the X direction makes a wall.
 //  Origin of the wall section is at the base of the column.
 fn draw_wall_section(
-    renderer: &Renderer,
+    renderer: &Arc<Renderer>,
     wall_kind: WallKind,
     size: Vec3,
     pos: Vec3,
@@ -565,7 +565,7 @@ fn draw_wall_section(
 //  Pos is the same as for a story, the lower left hand corner.
 //  Floor texture on top, ceiling texture on bottom.
 fn draw_floor_and_ceiling(
-    renderer: &Renderer,
+    renderer: &Arc<Renderer>,
     height: f32, // floor height
     size: Vec3,
     pos: Vec3,
@@ -598,7 +598,7 @@ fn draw_floor_and_ceiling(
 //  Pos is the same as for a story, the lower left hand corner.
 //  Floor texture on top, ceiling texture on bottom.
 fn draw_roof(
-    renderer: &Renderer,
+    renderer: &Arc<Renderer>,
     height: f32,    // floor height
     thickness: f32, // of parapet, not roof
     size: Vec3,

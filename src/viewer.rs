@@ -103,7 +103,7 @@ fn load_skybox_images(prefix: &str, filenames: &[&str]) -> Result<((u32, u32), V
 }
 
 /// Load the skybox from individual images.
-fn load_skybox(renderer: &Renderer, skybox_routine: &Mutex<SkyboxRoutine>) -> Result<(), Error> {
+fn load_skybox(renderer: &Arc<Renderer>, skybox_routine: &Mutex<SkyboxRoutine>) -> Result<(), Error> {
     let prefix = env!("CARGO_MANIFEST_DIR").to_owned() + SKYBOX_TEXTURES_DIR; // filename prefix
     let skybox_files: [&str; 6] = [
         "right.jpg",

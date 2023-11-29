@@ -7,6 +7,7 @@
 //  Animats
 //  April, 2022.
 //
+use std::sync::{Arc};
 use anyhow::{Context, Error};
 use glam::{Mat3, Mat4, Quat, UVec2, Vec2, Vec3, Vec4};
 use image::RgbaImage;
@@ -25,7 +26,7 @@ use rend3_routine::pbr::{AlbedoComponent, NormalTexture, PbrMaterial};
 //  Each block gets its own material, because we do it that way in the SL viewer.
 //  No instancing here.
 pub fn create_simple_block(
-    renderer: &Renderer,
+    renderer: &Arc<Renderer>,
     scale: Vec3,                                        // this rescales the actual mesh
     offset: Vec3,                                       // this offsets the coords in the mesh
     pos: Vec3,                                          // position in transform
@@ -52,7 +53,7 @@ pub fn create_simple_block(
 
 /// Very simple texture, but a bit of shinyness.
 pub fn create_simple_material(
-    renderer: &Renderer,
+    renderer: &Arc<Renderer>,
     albedo_handle: &Texture2DHandle,
     normal_handle: &Texture2DHandle,
 ) -> MaterialHandle {
@@ -89,7 +90,7 @@ pub fn read_texture(full_pathname: &str) -> Result<RgbaImage, Error> {
 
 /// Create texture from RGBA
 pub fn create_texture_from_rgba(
-    renderer: &Renderer,
+    renderer: &Arc<Renderer>,
     label: &str,
     rgba: &RgbaImage,
 ) -> Texture2DHandle {
