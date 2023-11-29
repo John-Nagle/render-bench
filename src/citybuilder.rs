@@ -9,7 +9,7 @@ use core::f32::consts::PI;
 use glam::{Quat, Vec3};
 use image::RgbaImage;
 use rend3::{
-    types::{ObjectHandle, TextureHandle},
+    types::{ObjectHandle, Texture2DHandle},
     Renderer,
 };
 use std::collections::HashMap;
@@ -263,7 +263,7 @@ impl TextureSetRgba {
         output
     }
 }
-pub type TextureSet = (TextureHandle, TextureHandle, f32); // albedo, normal, scale
+pub type TextureSet = (Texture2DHandle, Texture2DHandle, f32); // albedo, normal, scale
 /// The textures we need for our little city.
 pub struct CityTextures {
     stone: TextureSet,   // used for columns

@@ -400,6 +400,7 @@ impl rend3_framework::App for SceneViewer {
                 intensity: self.directional_light_intensity,
                 direction,
                 distance: SUN_SHADOW_DISTANCE,
+                resolution: 2048, // ***NOT SURE ABOUT THIS***
             }));
         }
 

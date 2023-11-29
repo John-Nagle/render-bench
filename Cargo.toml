@@ -11,21 +11,21 @@ tracy = ["tracy-client", "profiling/profile-with-tracy"]
 [dependencies]
 #   Rendering-related
 env_logger = { version = "0.9", default-features = false, features = ["termcolor", "atty"] }
-glam = {version = "0.20.0", features = ["bytemuck"]}
+glam = {version = "0.24", features = ["bytemuck"]}
 histogram = "0.6.9"
 image = { version = "0.23", default-features = false, features = ["png", "jpeg"]}
 pico-args = "0.4"
 pollster = "0.2.4"
 profiling = { version = "1", default-features = false }
 #   Using pinned version of Rend3 0.3 Unreleased because the API changed from 0.2 and 0.3 isn't released yet.
-rend3 = { git = 'https://github.com/BVE-Reborn/rend3.git', rev= "f2b7df4775919a0fc766e3a5718d8b4bba38bc28" }
-rend3-routine = { git = 'https://github.com/BVE-Reborn/rend3.git', rev= "f2b7df4775919a0fc766e3a5718d8b4bba38bc28" }
-rend3-framework = { git = 'https://github.com/BVE-Reborn/rend3.git', rev= "f2b7df4775919a0fc766e3a5718d8b4bba38bc28" }
+rend3 = { git = 'https://github.com/BVE-Reborn/rend3.git' }
+rend3-routine = { git = 'https://github.com/BVE-Reborn/rend3.git' }
+rend3-framework = { git = 'https://github.com/BVE-Reborn/rend3.git' }
 rustc-hash = "1"
 smallvec = "1"
-tracy-client = {version = "0.12", optional = true }
-wgpu-profiler = "0.8.0"
-winit = "0.26"
+tracy-client = {version = "0.16", optional = true }
+wgpu-profiler = "0.15.0"
+winit = "0.28"
 
 #   Others
 argparse = "0.2.2"

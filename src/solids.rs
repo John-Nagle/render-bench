@@ -13,7 +13,7 @@ use image::RgbaImage;
 use rend3::{
     types::{
         MaterialHandle, Mesh, MeshBuilder, Object, ObjectHandle, Texture, TextureFormat,
-        TextureHandle,
+        Texture2DHandle,
     },
     Renderer,
 };
@@ -30,7 +30,7 @@ pub fn create_simple_block(
     offset: Vec3,                                       // this offsets the coords in the mesh
     pos: Vec3,                                          // position in transform
     rot: Quat,                                          // rotation
-    texture_info: &(TextureHandle, TextureHandle, f32), // (albedo, normal, scale)
+    texture_info: &(Texture2DHandle, Texture2DHandle, f32), // (albedo, normal, scale)
 ) -> ObjectHandle {
     profiling::scope!("Add block");
     let (albedo_handle, normal_handle, texture_scale) = texture_info; // unpack tuple
@@ -53,8 +53,8 @@ pub fn create_simple_block(
 /// Very simple texture, but a bit of shinyness.
 pub fn create_simple_material(
     renderer: &Renderer,
-    albedo_handle: &TextureHandle,
-    normal_handle: &TextureHandle,
+    albedo_handle: &Texture2DHandle,
+    normal_handle: &Texture2DHandle,
 ) -> MaterialHandle {
     profiling::scope!("Add material");
     let diffuse_color = Vec4::ONE; // white
@@ -92,7 +92,7 @@ pub fn create_texture_from_rgba(
     renderer: &Renderer,
     label: &str,
     rgba: &RgbaImage,
-) -> TextureHandle {
+) -> Texture2DHandle {
     let mips = 1; // no mipmapping for now
     let texture = Texture {
         label: Some(label.to_string()),
