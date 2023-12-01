@@ -582,6 +582,7 @@ impl rend3_framework::App for SceneViewer {
                 ////self.previous_profiling_stats = graph.execute(renderer, frame, cmd_bufs, &ready);
                 // mark the end of the frame for tracy/other profilers
                 self.previous_profiling_stats = graph.execute(renderer, &mut eval_output);
+                frame.present();
                 profiling::finish_frame!();
             }
             Event::WindowEvent {
