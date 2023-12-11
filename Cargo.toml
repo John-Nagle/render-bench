@@ -1,6 +1,6 @@
 [package]
 name = "render-bench"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["John Nagle <nagle@animats.com>"]
 edition = "2021"
 
@@ -18,9 +18,9 @@ pico-args = "0.4"
 pollster = "0.2.4"
 profiling = { version = "1", default-features = false }
 #   Using pinned version of Rend3 0.3 Unreleased because the API changed from 0.2 and 0.3 isn't released yet.
-rend3 = { git = 'https://github.com/BVE-Reborn/rend3.git' }
-rend3-routine = { git = 'https://github.com/BVE-Reborn/rend3.git' }
-rend3-framework = { git = 'https://github.com/BVE-Reborn/rend3.git' }
+rend3 = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "e1cfe1b" }
+rend3-routine = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "e1cfe1b"}
+rend3-framework = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "e1cfe1b" }
 rustc-hash = "1"
 smallvec = "1"
 tracy-client = {version = "0.16", optional = true }

@@ -121,7 +121,7 @@ fn load_skybox(renderer: &Arc<Renderer>, skybox_routine: &Mutex<SkyboxRoutine>) 
         label: Some("background".into()),
         mip_count: rend3::types::MipmapCount::ONE,
         mip_source: rend3::types::MipmapSource::Uploaded,
-    });
+    }).expect("Error adding texture cube");
     //  Finally set skybox
     skybox_routine.lock().set_background_texture(Some(handle));
     Ok(())

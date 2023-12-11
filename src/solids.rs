@@ -40,7 +40,7 @@ pub fn create_simple_block(
     let mesh = create_mesh(scale, offset, *texture_scale);
     let mesh_handle = {
         profiling::scope!("Add mesh");
-        renderer.add_mesh(mesh)
+        renderer.add_mesh(mesh).expect("Error adding mesh")
     };
     //  Add object to Rend3 system
     profiling::scope!("Add object");
@@ -105,7 +105,7 @@ pub fn create_texture_from_rgba(
         mip_source: rend3::types::MipmapSource::Uploaded,
     };
     profiling::scope!("Add texture");
-    renderer.add_texture_2d(texture) // put into GPU
+    renderer.add_texture_2d(texture).expect("Error adding texture") // put into GPU
 }
 
 //  Create a mesh object with the appropriate scale and origin offset.
