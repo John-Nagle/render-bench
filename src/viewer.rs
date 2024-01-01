@@ -17,12 +17,12 @@ use rend3::{
     Renderer, RendererProfile,
 };
 use rend3_framework::{lock, Mutex};
-use rend3_routine::{base::BaseRenderGraph, skybox::SkyboxRoutine};
+use rend3_routine::{skybox::SkyboxRoutine};
 use std::time::Instant;
 use std::{collections::HashMap, hash::BuildHasher, path::Path, sync::Arc, time::Duration};
 use wgpu_profiler::GpuTimerScopeResult;
 use winit::{
-    event::{DeviceEvent, ElementState, Event, KeyboardInput, MouseButton, WindowEvent},
+    event::{DeviceEvent, ElementState, Event, MouseButton, WindowEvent, KeyEvent},
     window::{Fullscreen, WindowBuilder},
 };
 
@@ -383,7 +383,7 @@ impl rend3_framework::App for SceneViewer {
             }
         }
     }
-
+/*
     fn setup<'a>(
         &'a mut self,
         _event_loop: &winit::event_loop::EventLoop<rend3_framework::UserResizeEvent<()>>,
@@ -392,11 +392,13 @@ impl rend3_framework::App for SceneViewer {
         routines: &'a Arc<rend3_framework::DefaultRoutines>,
         _surface_format: rend3::types::TextureFormat,
     ) {
-        self.grabber = Some(rend3_framework::Grabber::new(window));
+*/
+    fn setup(&mut self, context: rend3_framework::SetupContext<'_>) {
+        self.grabber = Some(rend3_framework::Grabber::new(context.window));
 
         const SUN_SHADOW_DISTANCE: f32 = 300.0;
         if let Some(direction) = self.directional_light_direction {
-            self.directional_light = Some(renderer.add_directional_light(DirectionalLight {
+            self.directional_light = Some(context.renderer.add_directional_light(DirectionalLight {
                 color: Vec3::splat(1.0),
                 intensity: self.directional_light_intensity,
                 direction,
@@ -405,20 +407,20 @@ impl rend3_framework::App for SceneViewer {
             }));
         }
 
-        let renderer = Arc::clone(renderer);
-        let routines = Arc::clone(routines);
-        window.set_visible(true);
-        window.set_maximized(true);
+        let renderer = Arc::clone(context.renderer);
+        let routines = Arc::clone(context.routines);
+        context.window.set_visible(true);
+        context.window.set_maximized(true);
         ////window.set_decorations(false);
         ////window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(None)));
-        let _window_size = window.inner_size();       
+        let _window_size = context.window.inner_size();       
         
         
-        load_skybox(&renderer, &routines.skybox).unwrap(); // load the background skybox
+        load_skybox(&renderer, &context.routines.skybox).unwrap(); // load the background skybox
         let thread_count = 1; // ***TEMP***
         self.city_builder.start(thread_count, renderer); // start up the city generator
     }
-
+/*
     fn handle_event(
         &mut self,
         window: &winit::window::Window,
@@ -430,8 +432,15 @@ impl rend3_framework::App for SceneViewer {
         event: rend3_framework::Event<'_, ()>,
         control_flow: impl FnOnce(winit::event_loop::ControlFlow),
     ) {
+*/
+    fn handle_event(&mut self, context: rend3_framework::EventContext<'_>, event: winit::event::Event<()>) {
         match event {
-            Event::MainEventsCleared => {
+/* ***TEMP TURNOFF*** no more MainEventsCleared
+            winit::event::Event::WindowEvent {
+                window_id,
+                event: WindowEvent::MainEventsCleared,
+            } => {
+            ////Event::MainEventsCleared => {
                 profiling::scope!("MainEventsCleared");
                 let now = Instant::now();
 
@@ -501,7 +510,7 @@ impl rend3_framework::App for SceneViewer {
                     self.camera_location -= up * velocity * delta_time.as_secs_f32();
                 }
                 if button_pressed(&self.scancode_status, platform::Scancodes::ESCAPE) {
-                    self.grabber.as_mut().unwrap().request_ungrab(window);
+                    self.grabber.as_mut().unwrap().request_ungrab(context.window);
                 }
                 if button_pressed(&self.scancode_status, platform::Scancodes::P) {
                     // write out gpu side performance info into a trace readable by chrome://tracing
@@ -517,9 +526,15 @@ impl rend3_framework::App for SceneViewer {
                     }
                 }
 
-                window.request_redraw()
+                context.window.request_redraw()
             }
-            Event::RedrawRequested(_) => {
+*/
+            winit::event::Event::WindowEvent {
+                window_id,
+                event: WindowEvent::RedrawRequested,
+            } => {
+
+            ////Event::RedrawRequested(_) => {
                 let view = Mat4::from_euler(
                     glam::EulerRot::XYZ,
                     -self.camera_pitch,
@@ -528,7 +543,7 @@ impl rend3_framework::App for SceneViewer {
                 );
                 let view = view * Mat4::from_translation((-self.camera_location).into());
 
-                renderer.set_camera_data(Camera {
+                context.renderer.set_camera_data(Camera {
                     projection: CameraProjection::Perspective {
                         vfov: 60.0,
                         near: 0.1,
@@ -540,21 +555,21 @@ impl rend3_framework::App for SceneViewer {
                 ////let frame = rend3::util::output::OutputFrame::Surface {
                 ////    surface: Arc::clone(surface.unwrap()),
                 ////};
-                let frame = surface.unwrap().get_current_texture().unwrap();
+                let frame = context.surface.unwrap().get_current_texture().unwrap();
                 // Evaluate our frame's world-change instructions
                 // Lock all the routines
-                let pbr_routine = lock(&routines.pbr);
-                let mut skybox_routine = lock(&routines.skybox);
-                let tonemapping_routine = lock(&routines.tonemapping);
+                let pbr_routine = lock(&context.routines.pbr);
+                let mut skybox_routine = lock(&context.routines.skybox);
+                let tonemapping_routine = lock(&context.routines.tonemapping);
                 //  Swap the instruction buffers. This begins a new frame.
-                renderer.swap_instruction_buffers();
+                context.renderer.swap_instruction_buffers();
 
 
                 // Ready up the renderer
                 ////let (cmd_bufs, ready) = renderer.ready();
                 // Ready up the routines
-                let mut eval_output = renderer.evaluate_instructions();
-                skybox_routine.evaluate(renderer);
+                let mut eval_output = context.renderer.evaluate_instructions();
+                skybox_routine.evaluate(context.renderer);
 
                 // Build a rendergraph
                 let mut graph = rend3::graph::RenderGraph::new();
@@ -562,26 +577,49 @@ impl rend3_framework::App for SceneViewer {
                 // Import the surface texture into the render graph.
                 let frame_handle =
                     graph.add_imported_render_target(&frame, 0..1, 0..1,
-                     rend3::graph::ViewportRect::from_size(resolution));
-
+                     rend3::graph::ViewportRect::from_size(context.resolution));
+/*
                 // Add the default rendergraph
-                base_rendergraph.add_to_graph(
+                context.base_rendergraph.add_to_graph(
                     &mut graph,
                     &eval_output,
                     &pbr_routine,
                     Some(&skybox_routine),
                     &tonemapping_routine,
                     frame_handle,
-                    resolution,
+                    context.resolution,
                     self.samples,
                     Vec3::splat(self.ambient_light_level).extend(1.0),
                     Vec4::new(0.10, 0.05, 0.10, 1.0), // Nice scene-referred purple
                 );
+*/                
+                // Add the default rendergraph
+                context.base_rendergraph.add_to_graph(
+                    &mut graph,
+                    rend3_routine::base::BaseRenderGraphInputs {
+                        eval_output: &eval_output,
+                        routines: rend3_routine::base::BaseRenderGraphRoutines {
+                            pbr: &pbr_routine,
+                            skybox: Some(&skybox_routine),
+                            tonemapping: &tonemapping_routine,
+                        },
+                        target: rend3_routine::base::OutputRenderTarget {
+                            handle: frame_handle,
+                            resolution: context.resolution,
+                            samples: self.samples,
+                        },
+                    },
+                    rend3_routine::base::BaseRenderGraphSettings {
+                        ambient_color: Vec3::splat(self.ambient_light_level).extend(1.0),
+                        clear_color: glam::Vec4::new(0.0, 0.0, 0.0, 1.0),
+                    },
+                );
+
 
                 // Dispatch a render using the built up rendergraph!
                 ////self.previous_profiling_stats = graph.execute(renderer, frame, cmd_bufs, &ready);
                 // mark the end of the frame for tracy/other profilers
-                self.previous_profiling_stats = graph.execute(renderer, &mut eval_output);
+                self.previous_profiling_stats = graph.execute(context.renderer, &mut eval_output);
                 frame.present();
                 profiling::finish_frame!();
             }
@@ -590,28 +628,31 @@ impl rend3_framework::App for SceneViewer {
                 ..
             } => {
                 if !focus {
-                    self.grabber.as_mut().unwrap().request_ungrab(window);
+                    self.grabber.as_mut().unwrap().request_ungrab(context.window);
                 }
             }
             Event::WindowEvent {
-                event:
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                scancode, state, ..
-                            },
+                event: WindowEvent::KeyboardInput {
+                    event: KeyEvent {
+                        physical_key,
+                        logical_key,
+                        state,
                         ..
                     },
+                    ..
+                },
                 ..
             } => {
-                log::info!("WE scancode {:x}", scancode);
-                self.scancode_status.insert(
-                    scancode,
-                    match state {
-                        ElementState::Pressed => true,
-                        ElementState::Released => false,
-                    },
-                );
+                if let winit::keyboard::PhysicalKey::Code(scancode) = physical_key {
+                    log::info!("WE scancode {:x}", scancode as u32);
+                    self.scancode_status.insert(
+                        scancode as u32,    // ***TEMP***
+                        match state {
+                            ElementState::Pressed => true,
+                            ElementState::Released => false,
+                        },
+                    );
+                }
             }
             Event::WindowEvent {
                 event:
@@ -625,7 +666,7 @@ impl rend3_framework::App for SceneViewer {
                 let grabber = self.grabber.as_mut().unwrap();
 
                 if !grabber.grabbed() {
-                    grabber.request_grab(window);
+                    grabber.request_grab(context.window);
                 }
             }
             Event::DeviceEvent {
@@ -670,7 +711,9 @@ impl rend3_framework::App for SceneViewer {
                 ..
             } => {
                 self.city_builder.stop(); // shut down other threads
-                control_flow(winit::event_loop::ControlFlow::Exit);
+                println!("Exiting.");
+                ////control_flow(winit::event_loop::ControlFlow::Exit);
+                std::process::exit(0); // Is there no better way to exit than this? 
             }
             _ => {}
         }

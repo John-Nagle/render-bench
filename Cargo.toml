@@ -18,14 +18,14 @@ pico-args = "0.4"
 pollster = "0.2.4"
 profiling = { version = "1", default-features = false }
 #   Using pinned version of Rend3 0.3 Unreleased because the API changed from 0.2 and 0.3 isn't released yet.
-rend3 = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "e1cfe1b" }
-rend3-routine = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "e1cfe1b"}
-rend3-framework = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "e1cfe1b" }
+rend3 = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "a6c0e04" }
+rend3-routine = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "a6c0e04"}
+rend3-framework = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "a6c0e04" }
 rustc-hash = "1"
 smallvec = "1"
 tracy-client = {version = "0.16", optional = true }
 wgpu-profiler = "0.15.0"
-winit = "0.28"
+winit = "0.29.4"
 
 #   Others
 argparse = "0.2.2"
