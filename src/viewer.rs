@@ -533,6 +533,40 @@ impl rend3_framework::App for SceneViewer {
                 window_id,
                 event: WindowEvent::RedrawRequested,
             } => {
+                //  Statistics
+                let now = Instant::now();
+
+                let delta_time = now - self.timestamp_last_frame;
+                self.frame_times
+                    .increment(delta_time.as_micros() as u64)
+                    .unwrap();
+
+                let elapsed_since_second = now - self.timestamp_last_second;
+                if elapsed_since_second > Duration::from_secs(1) {
+                    let count = self.frame_times.entries();
+                    println!(
+                        "{:0>5} frames over {:0>5.2}s. \
+                        Min: {:0>5.2}ms; \
+                        Average: {:0>5.2}ms; \
+                        95%: {:0>5.2}ms; \
+                        99%: {:0>5.2}ms; \
+                        Max: {:0>5.2}ms; \
+                        StdDev: {:0>5.2}ms",
+                        count,
+                        elapsed_since_second.as_secs_f32(),
+                        self.frame_times.minimum().unwrap() as f32 / 1_000.0,
+                        self.frame_times.mean().unwrap() as f32 / 1_000.0,
+                        self.frame_times.percentile(95.0).unwrap() as f32 / 1_000.0,
+                        self.frame_times.percentile(99.0).unwrap() as f32 / 1_000.0,
+                        self.frame_times.maximum().unwrap() as f32 / 1_000.0,
+                        self.frame_times.stddev().unwrap() as f32 / 1_000.0,
+                    );
+                    self.timestamp_last_second = now;
+                    self.frame_times.clear();
+                }
+
+                self.timestamp_last_frame = now;
+
 
             ////Event::RedrawRequested(_) => {
                 let view = Mat4::from_euler(
@@ -622,6 +656,7 @@ impl rend3_framework::App for SceneViewer {
                 self.previous_profiling_stats = graph.execute(context.renderer, &mut eval_output);
                 frame.present();
                 profiling::finish_frame!();
+                context.window.request_redraw();
             }
             Event::WindowEvent {
                 event: WindowEvent::Focused(focus),
