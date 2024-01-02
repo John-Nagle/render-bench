@@ -676,6 +676,7 @@ impl rend3_framework::App for SceneViewer {
                 event: WindowEvent::CloseRequested,
                 ..
             } => {
+                println!("Starting shutdown.");
                 self.city_builder.stop(); // shut down other threads
                 println!("Exiting.");
                 ////control_flow(winit::event_loop::ControlFlow::Exit);
