@@ -6,7 +6,7 @@
 //  Shared memory threaded targets only - no Android.
 //
 use anyhow::{anyhow, Context, Error};
-use glam::{DVec2, Mat3A, Mat4, UVec2, Vec3, Vec4, Vec3A};
+use glam::{DVec2, Mat3A, Mat4, UVec2, Vec3, Vec3A};
 use pico_args::Arguments;
 use rend3::{
     types::{
@@ -24,10 +24,10 @@ use wgpu_profiler::GpuTimerScopeResult;
 use winit::{
     event::{DeviceEvent, ElementState, Event, MouseButton, WindowEvent, KeyEvent},
     window::{Fullscreen, WindowBuilder},
+    keyboard::{KeyCode},
 };
 
 use super::citybuilder::{CityBuilder, CityParams};
-use super::platform;
 //
 //  Constants
 //
@@ -127,7 +127,7 @@ fn load_skybox(renderer: &Arc<Renderer>, skybox_routine: &Mutex<SkyboxRoutine>) 
     Ok(())
 }
 
-fn button_pressed<Hash: BuildHasher>(map: &HashMap<u32, bool, Hash>, key: u32) -> bool {
+fn button_pressed<Hash: BuildHasher>(map: &HashMap<KeyCode, bool, Hash>, key: KeyCode) -> bool {
     map.get(&key).map_or(false, |b| *b)
 }
 
@@ -241,7 +241,7 @@ struct SceneViewer {
 
     fullscreen: bool,
 
-    scancode_status: FastHashMap<u32, bool>,
+    scancode_status: FastHashMap<KeyCode, bool>,
     camera_pitch: f32,
     camera_yaw: f32,
     camera_location: Vec3A,
@@ -408,7 +408,7 @@ impl rend3_framework::App for SceneViewer {
         }
 
         let renderer = Arc::clone(context.renderer);
-        let routines = Arc::clone(context.routines);
+        ////let routines = Arc::clone(context.routines);
         context.window.set_visible(true);
         context.window.set_maximized(true);
         ////window.set_decorations(false);
@@ -435,103 +435,11 @@ impl rend3_framework::App for SceneViewer {
 */
     fn handle_event(&mut self, context: rend3_framework::EventContext<'_>, event: winit::event::Event<()>) {
         match event {
-/* ***TEMP TURNOFF*** no more MainEventsCleared
+
             winit::event::Event::WindowEvent {
-                window_id,
-                event: WindowEvent::MainEventsCleared,
-            } => {
-            ////Event::MainEventsCleared => {
-                profiling::scope!("MainEventsCleared");
-                let now = Instant::now();
-
-                let delta_time = now - self.timestamp_last_frame;
-                self.frame_times
-                    .increment(delta_time.as_micros() as u64)
-                    .unwrap();
-
-                let elapsed_since_second = now - self.timestamp_last_second;
-                if elapsed_since_second > Duration::from_secs(1) {
-                    let count = self.frame_times.entries();
-                    println!(
-                        "{:0>5} frames over {:0>5.2}s. \
-                        Min: {:0>5.2}ms; \
-                        Average: {:0>5.2}ms; \
-                        95%: {:0>5.2}ms; \
-                        99%: {:0>5.2}ms; \
-                        Max: {:0>5.2}ms; \
-                        StdDev: {:0>5.2}ms",
-                        count,
-                        elapsed_since_second.as_secs_f32(),
-                        self.frame_times.minimum().unwrap() as f32 / 1_000.0,
-                        self.frame_times.mean().unwrap() as f32 / 1_000.0,
-                        self.frame_times.percentile(95.0).unwrap() as f32 / 1_000.0,
-                        self.frame_times.percentile(99.0).unwrap() as f32 / 1_000.0,
-                        self.frame_times.maximum().unwrap() as f32 / 1_000.0,
-                        self.frame_times.stddev().unwrap() as f32 / 1_000.0,
-                    );
-                    self.timestamp_last_second = now;
-                    self.frame_times.clear();
-                }
-
-                self.timestamp_last_frame = now;
-
-                let rotation = Mat3A::from_euler(
-                    glam::EulerRot::XYZ,
-                    -self.camera_pitch,
-                    -self.camera_yaw,
-                    0.0,
-                )
-                .transpose();
-                let forward = -rotation.z_axis;
-                let up = rotation.y_axis;
-                let side = -rotation.x_axis;
-                let velocity = if button_pressed(&self.scancode_status, platform::Scancodes::SHIFT)
-                {
-                    self.run_speed
-                } else {
-                    self.walk_speed
-                };
-                if button_pressed(&self.scancode_status, platform::Scancodes::W) {
-                    self.camera_location += forward * velocity * delta_time.as_secs_f32();
-                }
-                if button_pressed(&self.scancode_status, platform::Scancodes::S) {
-                    self.camera_location -= forward * velocity * delta_time.as_secs_f32();
-                }
-                if button_pressed(&self.scancode_status, platform::Scancodes::A) {
-                    self.camera_location += side * velocity * delta_time.as_secs_f32();
-                }
-                if button_pressed(&self.scancode_status, platform::Scancodes::D) {
-                    self.camera_location -= side * velocity * delta_time.as_secs_f32();
-                }
-                if button_pressed(&self.scancode_status, platform::Scancodes::Q) {
-                    self.camera_location += up * velocity * delta_time.as_secs_f32();
-                }
-                if button_pressed(&self.scancode_status, platform::Scancodes::Z) {
-                    self.camera_location -= up * velocity * delta_time.as_secs_f32();
-                }
-                if button_pressed(&self.scancode_status, platform::Scancodes::ESCAPE) {
-                    self.grabber.as_mut().unwrap().request_ungrab(context.window);
-                }
-                if button_pressed(&self.scancode_status, platform::Scancodes::P) {
-                    // write out gpu side performance info into a trace readable by chrome://tracing
-                    if let Some(ref stats) = self.previous_profiling_stats {
-                        println!("Outputing gpu timing chrome trace to profile.json");
-                        wgpu_profiler::chrometrace::write_chrometrace(
-                            Path::new("profile.json"),
-                            stats,
-                        )
-                        .unwrap();
-                    } else {
-                        println!("No gpu timing trace available, either timestamp queries are unsupported or not enough frames have elapsed yet!");
-                    }
-                }
-
-                context.window.request_redraw()
-            }
-*/
-            winit::event::Event::WindowEvent {
-                window_id,
+                ////window_id,
                 event: WindowEvent::RedrawRequested,
+                ..
             } => {
                 //  Statistics
                 let now = Instant::now();
@@ -567,6 +475,7 @@ impl rend3_framework::App for SceneViewer {
 
                 self.timestamp_last_frame = now;
 
+                self.handle_button(&context, delta_time);
 
             ////Event::RedrawRequested(_) => {
                 let view = Mat4::from_euler(
@@ -670,7 +579,7 @@ impl rend3_framework::App for SceneViewer {
                 event: WindowEvent::KeyboardInput {
                     event: KeyEvent {
                         physical_key,
-                        logical_key,
+                        ////logical_key,
                         state,
                         ..
                     },
@@ -679,9 +588,9 @@ impl rend3_framework::App for SceneViewer {
                 ..
             } => {
                 if let winit::keyboard::PhysicalKey::Code(scancode) = physical_key {
-                    log::info!("WE scancode {:x}", scancode as u32);
+                    log::info!("WE scancode {:?}", scancode);
                     self.scancode_status.insert(
-                        scancode as u32,    // ***TEMP***
+                        scancode,    // ***TEMP***
                         match state {
                             ElementState::Pressed => true,
                             ElementState::Released => false,
@@ -751,6 +660,65 @@ impl rend3_framework::App for SceneViewer {
                 std::process::exit(0); // Is there no better way to exit than this? 
             }
             _ => {}
+        }
+    }
+}
+
+impl SceneViewer {
+    /// Handle movement from key presses.
+    /// Follows how SceneViewer example does it.
+    fn handle_button(&mut self, context: &rend3_framework::EventContext<'_>, delta_time: Duration) {              
+        //  Keyboard processing
+        let rotation = Mat3A::from_euler(
+            glam::EulerRot::XYZ,
+            -self.camera_pitch,
+            -self.camera_yaw,
+            0.0,
+        )
+        .transpose();
+        let forward = -rotation.z_axis;
+        let up = rotation.y_axis;
+        let side = -rotation.x_axis;
+        let velocity = if button_pressed(&self.scancode_status, KeyCode::ShiftLeft)
+                        || button_pressed(&self.scancode_status, KeyCode::ShiftRight)
+        {
+            self.run_speed
+        } else {
+            self.walk_speed
+        };
+        if button_pressed(&self.scancode_status, KeyCode::KeyW) {
+            self.camera_location += forward * velocity * delta_time.as_secs_f32();
+        }
+        if button_pressed(&self.scancode_status, KeyCode::KeyS) {
+            self.camera_location -= forward * velocity * delta_time.as_secs_f32();
+        }
+        if button_pressed(&self.scancode_status, KeyCode::KeyA) {
+            self.camera_location += side * velocity * delta_time.as_secs_f32();
+        }
+        if button_pressed(&self.scancode_status, KeyCode::KeyD) {
+            self.camera_location -= side * velocity * delta_time.as_secs_f32();
+        }
+        if button_pressed(&self.scancode_status, KeyCode::KeyQ) {
+            self.camera_location += up * velocity * delta_time.as_secs_f32();
+        }
+        if button_pressed(&self.scancode_status, KeyCode::KeyZ) {
+            self.camera_location -= up * velocity * delta_time.as_secs_f32();
+        }
+        if button_pressed(&self.scancode_status, KeyCode::Escape) {
+            self.grabber.as_mut().unwrap().request_ungrab(context.window);
+        }
+        if button_pressed(&self.scancode_status, KeyCode::KeyP) {
+            // write out gpu side performance info into a trace readable by chrome://tracing
+            if let Some(ref stats) = self.previous_profiling_stats {
+                println!("Outputing gpu timing chrome trace to profile.json");
+                wgpu_profiler::chrometrace::write_chrometrace(
+                    Path::new("profile.json"),
+                    stats,
+                )
+                .unwrap();
+            } else {
+                println!("No gpu timing trace available, either timestamp queries are unsupported or not enough frames have elapsed yet!");
+            }
         }
     }
 }
