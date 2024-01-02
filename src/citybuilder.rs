@@ -122,6 +122,8 @@ impl CityBuilder {
         _id: usize,
         stop_flag: Arc<AtomicBool>,
     ) {
+        profiling::register_thread!();
+        profiling::scope!("Add content");
         //  Convert all the textures from RGBA to texture handles.
         let city_textures = CityTextures::new_from_map(&renderer, &state.lock().unwrap().textures);
 

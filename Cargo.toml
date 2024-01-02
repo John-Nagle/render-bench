@@ -6,6 +6,7 @@ edition = "2021"
 
 [features]
 #   Feature "tracy" enables profiing with Tracy
+default = ["tracy"]
 tracy = ["tracy-client", "profiling/profile-with-tracy"]
 
 [dependencies]

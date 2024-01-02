@@ -688,8 +688,14 @@ impl SceneViewer {
     ndk_glue::main(backtrace = "on", logger(level = "debug"))
 )]
 pub fn viewer() {
-    profiling::scope!("Refresh");
-    profiling::register_thread!();
+    #[cfg(feature = "tracy")]
+    {   let _client = tracy_client::Client::start(); // enable profiler if "tracy" feature is on
+        assert!(tracy_client::Client::is_running()); // if compiled with wrong version of tracy, will fail
+        println!("Tracy tracing is enabled.");
+        profiling::register_thread!();
+        profiling::scope!("Refresh");
+    }
+
     let app = SceneViewer::new();
 
     let mut builder = WindowBuilder::new()
