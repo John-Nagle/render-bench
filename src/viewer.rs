@@ -412,121 +412,120 @@ impl rend3_framework::App for SceneViewer {
         self.city_builder.start(thread_count, renderer); // start up the city generator
     }
 
+            
+    fn handle_redraw(&mut self, context: rend3_framework::RedrawContext<'_, ()>) {
+        profiling::scope!("RedrawRequested");
+        //  Statistics
+        let now = Instant::now();
+
+        let delta_time = now - self.timestamp_last_frame;
+        self.frame_times
+            .increment(delta_time.as_micros() as u64)
+            .unwrap();
+
+        let elapsed_since_second = now - self.timestamp_last_second;
+        if elapsed_since_second > Duration::from_secs(1) {
+            let count = self.frame_times.entries();
+            println!(
+                "{:0>5} frames over {:0>5.2}s. \
+                Min: {:0>5.2}ms; \
+                Average: {:0>5.2}ms; \
+                95%: {:0>5.2}ms; \
+                99%: {:0>5.2}ms; \
+                Max: {:0>5.2}ms; \
+                StdDev: {:0>5.2}ms",
+                count,
+                elapsed_since_second.as_secs_f32(),
+                self.frame_times.minimum().unwrap() as f32 / 1_000.0,
+                self.frame_times.mean().unwrap() as f32 / 1_000.0,
+                self.frame_times.percentile(95.0).unwrap() as f32 / 1_000.0,
+                self.frame_times.percentile(99.0).unwrap() as f32 / 1_000.0,
+                self.frame_times.maximum().unwrap() as f32 / 1_000.0,
+                self.frame_times.stddev().unwrap() as f32 / 1_000.0,
+            );
+            self.timestamp_last_second = now;
+            self.frame_times.clear();
+        }
+
+        self.timestamp_last_frame = now;
+
+        self.handle_button(&context, delta_time);
+
+        let view = Mat4::from_euler(
+            glam::EulerRot::XYZ,
+            -self.camera_pitch,
+            -self.camera_yaw,
+            0.0,
+        );
+        let view = view * Mat4::from_translation((-self.camera_location).into());
+
+        context.renderer.set_camera_data(Camera {
+            projection: CameraProjection::Perspective {
+                vfov: 60.0,
+                near: 0.1,
+            },
+            view,
+        });
+
+        // Get a frame
+        let frame = context.surface.unwrap().get_current_texture().unwrap();
+        // Evaluate our frame's world-change instructions
+        // Lock all the routines
+        let pbr_routine = lock(&context.routines.pbr);
+        let mut skybox_routine = lock(&context.routines.skybox);
+        let tonemapping_routine = lock(&context.routines.tonemapping);
+        //  Swap the instruction buffers. This begins a new frame.
+        context.renderer.swap_instruction_buffers();
+
+
+        // Ready up the renderer
+        // Ready up the routines
+        let mut eval_output = context.renderer.evaluate_instructions();
+        skybox_routine.evaluate(context.renderer);
+
+        // Build a rendergraph
+        let mut graph = rend3::graph::RenderGraph::new();
+                
+        // Import the surface texture into the render graph.
+        let frame_handle =
+            graph.add_imported_render_target(&frame, 0..1, 0..1,
+             rend3::graph::ViewportRect::from_size(context.resolution));
+                
+        // Add the default rendergraph
+        context.base_rendergraph.add_to_graph(
+            &mut graph,
+            rend3_routine::base::BaseRenderGraphInputs {
+                eval_output: &eval_output,
+                routines: rend3_routine::base::BaseRenderGraphRoutines {
+                    pbr: &pbr_routine,
+                    skybox: Some(&skybox_routine),
+                    tonemapping: &tonemapping_routine,
+                },
+                target: rend3_routine::base::OutputRenderTarget {
+                    handle: frame_handle,
+                    resolution: context.resolution,
+                    samples: self.samples,
+                },
+            },
+            rend3_routine::base::BaseRenderGraphSettings {
+                ambient_color: Vec3::splat(self.ambient_light_level).extend(1.0),
+                clear_color: glam::Vec4::new(0.0, 0.0, 0.0, 1.0),
+            },
+        );
+
+
+        // Dispatch a render using the built up rendergraph!
+        ////self.previous_profiling_stats = graph.execute(renderer, frame, cmd_bufs, &ready);
+        // mark the end of the frame for tracy/other profilers
+        self.previous_profiling_stats = graph.execute(context.renderer, &mut eval_output);
+        frame.present();
+        profiling::finish_frame!();
+        context.window.request_redraw();
+    }
+    
     fn handle_event(&mut self, context: rend3_framework::EventContext<'_>, event: winit::event::Event<()>) {
         match event {
-
-            winit::event::Event::WindowEvent {
-                ////window_id,
-                event: WindowEvent::RedrawRequested,
-                ..
-            } => {
-                //  Statistics
-                let now = Instant::now();
-
-                let delta_time = now - self.timestamp_last_frame;
-                self.frame_times
-                    .increment(delta_time.as_micros() as u64)
-                    .unwrap();
-
-                let elapsed_since_second = now - self.timestamp_last_second;
-                if elapsed_since_second > Duration::from_secs(1) {
-                    let count = self.frame_times.entries();
-                    println!(
-                        "{:0>5} frames over {:0>5.2}s. \
-                        Min: {:0>5.2}ms; \
-                        Average: {:0>5.2}ms; \
-                        95%: {:0>5.2}ms; \
-                        99%: {:0>5.2}ms; \
-                        Max: {:0>5.2}ms; \
-                        StdDev: {:0>5.2}ms",
-                        count,
-                        elapsed_since_second.as_secs_f32(),
-                        self.frame_times.minimum().unwrap() as f32 / 1_000.0,
-                        self.frame_times.mean().unwrap() as f32 / 1_000.0,
-                        self.frame_times.percentile(95.0).unwrap() as f32 / 1_000.0,
-                        self.frame_times.percentile(99.0).unwrap() as f32 / 1_000.0,
-                        self.frame_times.maximum().unwrap() as f32 / 1_000.0,
-                        self.frame_times.stddev().unwrap() as f32 / 1_000.0,
-                    );
-                    self.timestamp_last_second = now;
-                    self.frame_times.clear();
-                }
-
-                self.timestamp_last_frame = now;
-
-                self.handle_button(&context, delta_time);
-
-                let view = Mat4::from_euler(
-                    glam::EulerRot::XYZ,
-                    -self.camera_pitch,
-                    -self.camera_yaw,
-                    0.0,
-                );
-                let view = view * Mat4::from_translation((-self.camera_location).into());
-
-                context.renderer.set_camera_data(Camera {
-                    projection: CameraProjection::Perspective {
-                        vfov: 60.0,
-                        near: 0.1,
-                    },
-                    view,
-                });
-
-                // Get a frame
-                let frame = context.surface.unwrap().get_current_texture().unwrap();
-                // Evaluate our frame's world-change instructions
-                // Lock all the routines
-                let pbr_routine = lock(&context.routines.pbr);
-                let mut skybox_routine = lock(&context.routines.skybox);
-                let tonemapping_routine = lock(&context.routines.tonemapping);
-                //  Swap the instruction buffers. This begins a new frame.
-                context.renderer.swap_instruction_buffers();
-
-
-                // Ready up the renderer
-                // Ready up the routines
-                let mut eval_output = context.renderer.evaluate_instructions();
-                skybox_routine.evaluate(context.renderer);
-
-                // Build a rendergraph
-                let mut graph = rend3::graph::RenderGraph::new();
-                
-                // Import the surface texture into the render graph.
-                let frame_handle =
-                    graph.add_imported_render_target(&frame, 0..1, 0..1,
-                     rend3::graph::ViewportRect::from_size(context.resolution));
-                
-                // Add the default rendergraph
-                context.base_rendergraph.add_to_graph(
-                    &mut graph,
-                    rend3_routine::base::BaseRenderGraphInputs {
-                        eval_output: &eval_output,
-                        routines: rend3_routine::base::BaseRenderGraphRoutines {
-                            pbr: &pbr_routine,
-                            skybox: Some(&skybox_routine),
-                            tonemapping: &tonemapping_routine,
-                        },
-                        target: rend3_routine::base::OutputRenderTarget {
-                            handle: frame_handle,
-                            resolution: context.resolution,
-                            samples: self.samples,
-                        },
-                    },
-                    rend3_routine::base::BaseRenderGraphSettings {
-                        ambient_color: Vec3::splat(self.ambient_light_level).extend(1.0),
-                        clear_color: glam::Vec4::new(0.0, 0.0, 0.0, 1.0),
-                    },
-                );
-
-
-                // Dispatch a render using the built up rendergraph!
-                ////self.previous_profiling_stats = graph.execute(renderer, frame, cmd_bufs, &ready);
-                // mark the end of the frame for tracy/other profilers
-                self.previous_profiling_stats = graph.execute(context.renderer, &mut eval_output);
-                frame.present();
-                profiling::finish_frame!();
-                context.window.request_redraw();
-            }
+    
             Event::WindowEvent {
                 event: WindowEvent::Focused(focus),
                 ..
