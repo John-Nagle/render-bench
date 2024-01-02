@@ -351,7 +351,7 @@ impl SceneViewer {
 }
 impl rend3_framework::App for SceneViewer {
     const HANDEDNESS: rend3::types::Handedness = rend3::types::Handedness::Right;
-
+/*
     fn create_iad<'a>(
         &'a mut self,
     ) -> std::pin::Pin<
@@ -367,6 +367,27 @@ impl rend3_framework::App for SceneViewer {
             .await?)
         })
     }
+*/
+    
+    fn create_iad<'a>(
+        &'a mut self,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<rend3::InstanceAdapterDevice, rend3::RendererInitializationError>>
+                + 'a,
+        >,
+    > {
+        Box::pin(async move {
+            rend3::create_iad(
+                self.desired_backend,
+                self.desired_device_name.clone(),
+                self.desired_profile,
+                None,
+            )
+            .await
+        })
+    }
+
 
     fn sample_count(&self) -> SampleCount {
         self.samples
@@ -385,7 +406,12 @@ impl rend3_framework::App for SceneViewer {
     }
 
     fn setup(&mut self, context: rend3_framework::SetupContext<'_>) {
-        self.grabber = Some(rend3_framework::Grabber::new(context.window));
+        ////self.grabber = Some(rend3_framework::Grabber::new(context.window));
+        self.grabber = context
+            .windowing
+            .map(|windowing| rend3_framework::Grabber::new(windowing.window));
+
+
 
         const SUN_SHADOW_DISTANCE: f32 = 300.0;
         if let Some(direction) = self.directional_light_direction {
@@ -400,11 +426,11 @@ impl rend3_framework::App for SceneViewer {
 
         let renderer = Arc::clone(context.renderer);
         ////let routines = Arc::clone(context.routines);
-        context.window.set_visible(true);
-        context.window.set_maximized(true);
+        ////context.window.set_visible(true);
+        ////context.window.set_maximized(true);
         ////window.set_decorations(false);
         ////window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(None)));
-        let _window_size = context.window.inner_size();       
+        ////let _window_size = context.window.inner_size();       
         
         
         load_skybox(&renderer, &context.routines.skybox).unwrap(); // load the background skybox
@@ -467,8 +493,8 @@ impl rend3_framework::App for SceneViewer {
             view,
         });
 
-        // Get a frame
-        let frame = context.surface.unwrap().get_current_texture().unwrap();
+        //// Get a frame
+        ////let frame = context.surface.unwrap().get_current_texture().unwrap();
         // Evaluate our frame's world-change instructions
         // Lock all the routines
         let pbr_routine = lock(&context.routines.pbr);
@@ -485,6 +511,41 @@ impl rend3_framework::App for SceneViewer {
 
         // Build a rendergraph
         let mut graph = rend3::graph::RenderGraph::new();
+        let frame_handle = graph.add_imported_render_target(
+            context.surface_texture,
+            0..1,
+            0..1,
+            rend3::graph::ViewportRect::from_size(context.resolution),
+        );
+        // Add the default rendergraph
+        context.base_rendergraph.add_to_graph(
+            &mut graph,
+            rend3_routine::base::BaseRenderGraphInputs {
+                eval_output: &eval_output,
+                routines: rend3_routine::base::BaseRenderGraphRoutines {
+                    pbr: &pbr_routine,
+                    skybox: Some(&skybox_routine),
+                    tonemapping: &tonemapping_routine,
+                },
+                target: rend3_routine::base::OutputRenderTarget {
+                    handle: frame_handle,
+                    resolution: context.resolution,
+                    samples: self.samples,
+                },
+            },
+            rend3_routine::base::BaseRenderGraphSettings {
+                ambient_color: Vec3::splat(self.ambient_light_level).extend(1.0),
+                clear_color: glam::Vec4::new(0.0, 0.0, 0.0, 1.0),
+            },
+        );
+
+        // Dispatch a render using the built up rendergraph!
+        self.previous_profiling_stats = graph.execute(context.renderer, &mut eval_output);
+
+        // mark the end of the frame for tracy/other profilers
+        profiling::finish_frame!();
+        
+        /*
                 
         // Import the surface texture into the render graph.
         let frame_handle =
@@ -521,19 +582,21 @@ impl rend3_framework::App for SceneViewer {
         frame.present();
         profiling::finish_frame!();
         context.window.request_redraw();
+        */
     }
     
     fn handle_event(&mut self, context: rend3_framework::EventContext<'_>, event: winit::event::Event<()>) {
         match event {
-    
+   
             Event::WindowEvent {
                 event: WindowEvent::Focused(focus),
                 ..
             } => {
                 if !focus {
-                    self.grabber.as_mut().unwrap().request_ungrab(context.window);
+                    self.grabber.as_mut().unwrap().request_ungrab(context.window.as_ref().unwrap());
                 }
             }
+
             Event::WindowEvent {
                 event: WindowEvent::KeyboardInput {
                     event: KeyEvent {
@@ -569,7 +632,7 @@ impl rend3_framework::App for SceneViewer {
                 let grabber = self.grabber.as_mut().unwrap();
 
                 if !grabber.grabbed() {
-                    grabber.request_grab(context.window);
+                    grabber.request_grab(context.window.as_ref().unwrap());
                 }
             }
             Event::DeviceEvent {
@@ -626,7 +689,7 @@ impl rend3_framework::App for SceneViewer {
 impl SceneViewer {
     /// Handle movement from key presses.
     /// Follows how SceneViewer example does it.
-    fn handle_button(&mut self, context: &rend3_framework::EventContext<'_>, delta_time: Duration) {              
+    fn handle_button(&mut self, context: &rend3_framework::RedrawContext<'_, ()>, delta_time: Duration) {              
         //  Keyboard processing
         let rotation = Mat3A::from_euler(
             glam::EulerRot::XYZ,
@@ -664,7 +727,7 @@ impl SceneViewer {
             self.camera_location -= up * velocity * delta_time.as_secs_f32();
         }
         if button_pressed(&self.scancode_status, KeyCode::Escape) {
-            self.grabber.as_mut().unwrap().request_ungrab(context.window);
+            self.grabber.as_mut().unwrap().request_ungrab(context.window.as_ref().unwrap());
         }
         if button_pressed(&self.scancode_status, KeyCode::KeyP) {
             // write out gpu side performance info into a trace readable by chrome://tracing
