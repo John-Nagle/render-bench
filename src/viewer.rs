@@ -383,16 +383,7 @@ impl rend3_framework::App for SceneViewer {
             }
         }
     }
-/*
-    fn setup<'a>(
-        &'a mut self,
-        _event_loop: &winit::event_loop::EventLoop<rend3_framework::UserResizeEvent<()>>,
-        window: &'a winit::window::Window,
-        renderer: &'a Arc<Renderer>,
-        routines: &'a Arc<rend3_framework::DefaultRoutines>,
-        _surface_format: rend3::types::TextureFormat,
-    ) {
-*/
+
     fn setup(&mut self, context: rend3_framework::SetupContext<'_>) {
         self.grabber = Some(rend3_framework::Grabber::new(context.window));
 
@@ -420,19 +411,7 @@ impl rend3_framework::App for SceneViewer {
         let thread_count = 1; // ***TEMP***
         self.city_builder.start(thread_count, renderer); // start up the city generator
     }
-/*
-    fn handle_event(
-        &mut self,
-        window: &winit::window::Window,
-        renderer: &Arc<rend3::Renderer>,
-        routines: &Arc<rend3_framework::DefaultRoutines>,
-        base_rendergraph: &BaseRenderGraph,
-        surface: Option<&Arc<rend3::types::Surface>>,
-        resolution: UVec2,
-        event: rend3_framework::Event<'_, ()>,
-        control_flow: impl FnOnce(winit::event_loop::ControlFlow),
-    ) {
-*/
+
     fn handle_event(&mut self, context: rend3_framework::EventContext<'_>, event: winit::event::Event<()>) {
         match event {
 
@@ -477,7 +456,6 @@ impl rend3_framework::App for SceneViewer {
 
                 self.handle_button(&context, delta_time);
 
-            ////Event::RedrawRequested(_) => {
                 let view = Mat4::from_euler(
                     glam::EulerRot::XYZ,
                     -self.camera_pitch,
@@ -495,9 +473,6 @@ impl rend3_framework::App for SceneViewer {
                 });
 
                 // Get a frame
-                ////let frame = rend3::util::output::OutputFrame::Surface {
-                ////    surface: Arc::clone(surface.unwrap()),
-                ////};
                 let frame = context.surface.unwrap().get_current_texture().unwrap();
                 // Evaluate our frame's world-change instructions
                 // Lock all the routines
@@ -509,7 +484,6 @@ impl rend3_framework::App for SceneViewer {
 
 
                 // Ready up the renderer
-                ////let (cmd_bufs, ready) = renderer.ready();
                 // Ready up the routines
                 let mut eval_output = context.renderer.evaluate_instructions();
                 skybox_routine.evaluate(context.renderer);
@@ -521,21 +495,7 @@ impl rend3_framework::App for SceneViewer {
                 let frame_handle =
                     graph.add_imported_render_target(&frame, 0..1, 0..1,
                      rend3::graph::ViewportRect::from_size(context.resolution));
-/*
-                // Add the default rendergraph
-                context.base_rendergraph.add_to_graph(
-                    &mut graph,
-                    &eval_output,
-                    &pbr_routine,
-                    Some(&skybox_routine),
-                    &tonemapping_routine,
-                    frame_handle,
-                    context.resolution,
-                    self.samples,
-                    Vec3::splat(self.ambient_light_level).extend(1.0),
-                    Vec4::new(0.10, 0.05, 0.10, 1.0), // Nice scene-referred purple
-                );
-*/                
+                
                 // Add the default rendergraph
                 context.base_rendergraph.add_to_graph(
                     &mut graph,
