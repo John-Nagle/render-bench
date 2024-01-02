@@ -617,7 +617,7 @@ impl rend3_framework::App for SceneViewer {
                 self.city_builder.stop(); // shut down other threads
                 println!("Exiting.");
                 ////control_flow(winit::event_loop::ControlFlow::Exit);
-                std::process::exit(0); // Is there no better way to exit than this? 
+                ////std::process::exit(0); // Is there no better way to exit than this? 
             }
             _ => {}
         }
