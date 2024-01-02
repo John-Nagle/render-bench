@@ -672,8 +672,7 @@ impl rend3_framework::App for SceneViewer {
                     .max(-std::f32::consts::FRAC_PI_2 + 0.0001)
                     .min(std::f32::consts::FRAC_PI_2 - 0.0001);
             }
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
+            Event::LoopExiting {
                 ..
             } => {
                 println!("Starting shutdown.");
