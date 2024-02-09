@@ -1,6 +1,6 @@
 [package]
 name = "render-bench"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["John Nagle <nagle@animats.com>"]
 edition = "2021"
 
@@ -11,7 +11,7 @@ tracy = ["tracy-client", "profiling/profile-with-tracy"]
 
 [dependencies]
 #   Rendering-related
-env_logger = { version = "0.10.1" }
+env_logger = { version = "0.11" }
 glam = {version = "0.24", features = ["bytemuck"]}
 histogram = "0.6.9"
 image = { version = "0.23", default-features = false, features = ["png", "jpeg"]}
@@ -19,13 +19,14 @@ pico-args = "0.4"
 pollster = "0.2.4"
 profiling = { version = "1", default-features = false }
 #   Using pinned version of Rend3 0.3 Unreleased because the API changed from 0.2 and 0.3 isn't released yet.
-rend3 = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "a68c76a" }
-rend3-routine = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "a68c76a"}
-rend3-framework = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "a68c76a" }
+#   Currently: arcanized form from 2024-02-09
+rend3 = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "c7c2d85" }
+rend3-routine = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "c7c2d85"}
+rend3-framework = { git = 'https://github.com/BVE-Reborn/rend3.git', rev = "c7c2d85" }
 rustc-hash = "1"
 smallvec = "1"
 tracy-client = {version = "0.16", optional = true }
-wgpu-profiler = "0.15.0"
+wgpu-profiler = "0.16"
 winit = "0.29.4"
 
 #   Others
@@ -35,8 +36,15 @@ obj = "0.10.2"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 generic-array = "0.14.4"
 log = "0.4.14"
-simplelog = "0.10.0"
+simplelog = "*"
 anyhow = "1.0"
 indoc = "1.0"
 cfg-if = "1.0"
+
+[patch.'https://github.com/BVE-Reborn/rend3.git']
+termcolor = { git = 'https://github.com/BurntSushi/termcolor.git' }
+
+[patch.crates-io]
+termcolor = { git = 'https://github.com/BurntSushi/termcolor.git' }
+
 

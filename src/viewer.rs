@@ -20,7 +20,7 @@ use rend3_framework::{lock, Mutex};
 use rend3_routine::{skybox::SkyboxRoutine};
 use std::time::Instant;
 use std::{collections::HashMap, hash::BuildHasher, path::Path, sync::Arc, time::Duration};
-use wgpu_profiler::GpuTimerScopeResult;
+use rend3::util::typedefs::RendererStatistics;
 use winit::{
     event::{DeviceEvent, ElementState, Event, MouseButton, WindowEvent, KeyEvent},
     window::{Fullscreen, WindowBuilder},
@@ -135,7 +135,6 @@ fn extract_backend(value: &str) -> Result<Backend, &'static str> {
     Ok(match value.to_lowercase().as_str() {
         "vulkan" | "vk" => Backend::Vulkan,
         "dx12" | "12" => Backend::Dx12,
-        "dx11" | "11" => Backend::Dx11,
         "metal" | "mtl" => Backend::Metal,
         "opengl" | "gl" => Backend::Gl,
         _ => return Err("unknown backend"),
@@ -245,7 +244,7 @@ struct SceneViewer {
     camera_pitch: f32,
     camera_yaw: f32,
     camera_location: Vec3A,
-    previous_profiling_stats: Option<Vec<GpuTimerScopeResult>>,
+    previous_profiling_stats: Option<RendererStatistics>,
     timestamp_last_second: Instant,
     timestamp_last_frame: Instant,
     frame_times: histogram::Histogram,
