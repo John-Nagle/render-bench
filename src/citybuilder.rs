@@ -9,7 +9,7 @@ use core::f32::consts::PI;
 use glam::{Quat, Vec3};
 use image::RgbaImage;
 use rend3::{
-    types::{ObjectHandle, Texture2DHandle},
+    types::{ObjectHandle, Texture2DHandle, Object},
     Renderer,
 };
 use std::collections::HashMap;
@@ -114,6 +114,12 @@ impl CityBuilder {
             TextureSetRgba::new_map(&self.params.texture_dir, &self.params.texture_files);
         println!("Content loaded.");
     }
+    
+    /// Add the objects all at once
+    fn add_objects(renderer: &Arc<Renderer>, objects: Vec<Object>) -> Vec<ObjectHandle> {
+        profiling::scope!("Add objects");
+        objects.into_iter().map(|obj| renderer.add_object(obj)).collect()
+    }
 
     /// Actually does the work
     fn run(
@@ -170,12 +176,12 @@ impl CityBuilder {
         const BLDG_ROWS: usize = 25;
         //  Draw first building rows once. Draw others and keep redrawing them.
         println!("Adding permanent buildings.");
-        let permanent_buildings = draw_building_grid(
+        let permanent_buildings = Self::add_objects(&renderer, draw_building_grid(
             &renderer,
             0..BLDG_ROWS / 2,
             &multi_story_building,
             &city_textures,
-        );
+        ));
         println!(
             "Adding permanent buildings completed. {} meshes added.",
             permanent_buildings.len()
@@ -188,12 +194,12 @@ impl CityBuilder {
             let mut temporary_buildings = {
                 profiling::scope!("Add buildings");
                 println!("Adding buildings.");
-                let result = draw_building_grid(
+                let result = Self::add_objects(&renderer, draw_building_grid(
                     &renderer,
                     BLDG_ROWS / 2..BLDG_ROWS,
                     &multi_story_building,
                     &city_textures,
-                );
+                ));
                 println!("Adding buildings completed. {} meshes added.", result.len());
                 result
             };
@@ -308,7 +314,7 @@ fn draw_building_grid(
     bldg_rows: core::ops::Range<usize>,
     wall_specs: &[(&[WallKind], &[WallKind])], // array of stories, going upwar
     city_textures: &CityTextures,
-) -> Vec<ObjectHandle> {
+) -> Vec<Object> {
     //  Multiple  buildings
     const BLDG_ROWS: usize = 25;
     const BLDG_SPACING: f32 = 10.0;
@@ -350,7 +356,7 @@ fn draw_building(
     pos: Vec3,                                 // position
     rot: Quat,                                 // orientation
     textures: &CityTextures,
-) -> Vec<ObjectHandle> {
+) -> Vec<Object> {
     profiling::scope!("Add building");
     profiling::register_thread!();
     let width = size[0];
@@ -397,7 +403,7 @@ fn draw_one_story(
     pos: Vec3,
     rot: Quat,
     textures: &CityTextures,
-) -> Vec<ObjectHandle> {
+) -> Vec<Object> {
     let width = size[0];
     let height = size[1];
     let (front, side) = wall_spec;
@@ -425,7 +431,7 @@ fn draw_one_story(
                 let startpos = pos;
                 draw_one_face(startpos, itemoffset, Quat::IDENTITY, kind)
             })
-            .collect::<Vec<ObjectHandle>>(),
+            .collect::<Vec<Object>>(),
     );
     //  Right side
     objects.extend(
@@ -436,7 +442,7 @@ fn draw_one_story(
                 let startpos = pos + rot * Vec3::new(front_width, 0.0, 0.0);
                 draw_one_face(startpos, itemoffset, Quat::from_rotation_y(-PI * 0.5), kind)
             })
-            .collect::<Vec<ObjectHandle>>(),
+            .collect::<Vec<Object>>(),
     );
     //  Back
     objects.extend(
@@ -448,7 +454,7 @@ fn draw_one_story(
                 let startpos = pos + rot * Vec3::new(front_width, 0.0, side_width);
                 draw_one_face(startpos, itemoffset, Quat::from_rotation_y(-PI), kind)
             })
-            .collect::<Vec<ObjectHandle>>(),
+            .collect::<Vec<Object>>(),
     );
     //  Left side
     objects.extend(
@@ -459,7 +465,7 @@ fn draw_one_story(
                 let startpos = pos + rot * Vec3::new(0.0, 0.0, side_width);
                 draw_one_face(startpos, itemoffset, Quat::from_rotation_y(-PI * 1.5), kind)
             })
-            .collect::<Vec<ObjectHandle>>(),
+            .collect::<Vec<Object>>(),
     );
     //  Floor and ceiling
     let floor_size = Vec3::new(front_width, 0.1, side_width);
@@ -481,7 +487,7 @@ fn draw_wall_section(
     pos: Vec3,
     rot: Quat,
     textures: &CityTextures,
-) -> Vec<ObjectHandle> {
+) -> Vec<Object> {
     //  Precompute wall info
     let width = size[0];
     let thickness = size[2];
@@ -573,7 +579,7 @@ fn draw_floor_and_ceiling(
     pos: Vec3,
     rot: Quat,
     textures: &CityTextures,
-) -> Vec<ObjectHandle> {
+) -> Vec<Object> {
     let thickness = size[1]; // thickness of floor
     let center = size * 0.5; // center of block relative to pos
     vec![
@@ -607,7 +613,7 @@ fn draw_roof(
     pos: Vec3,
     rot: Quat,
     textures: &CityTextures,
-) -> Vec<ObjectHandle> {
+) -> Vec<Object> {
     let center = size * 0.5 + Vec3::new(0.0, height, 0.0);
     vec![
         solids::create_simple_block(

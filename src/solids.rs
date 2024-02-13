@@ -13,7 +13,7 @@ use glam::{Mat3, Mat4, Quat, UVec2, Vec2, Vec3, Vec4};
 use image::RgbaImage;
 use rend3::{
     types::{
-        MaterialHandle, Mesh, MeshBuilder, Object, ObjectHandle, Texture, TextureFormat,
+        MaterialHandle, Mesh, MeshBuilder, Object, Texture, TextureFormat,
         Texture2DHandle,
     },
     Renderer,
@@ -32,7 +32,7 @@ pub fn create_simple_block(
     pos: Vec3,                                          // position in transform
     rot: Quat,                                          // rotation
     texture_info: &(Texture2DHandle, Texture2DHandle, f32), // (albedo, normal, scale)
-) -> ObjectHandle {
+) -> Object {
     profiling::scope!("Add block");
     let (albedo_handle, normal_handle, texture_scale) = texture_info; // unpack tuple
                                                                       ////println!("Add built-in object at {:?} size {:?}", pos, scale); // ***TEMP***
@@ -43,12 +43,13 @@ pub fn create_simple_block(
         renderer.add_mesh(mesh).expect("Error adding mesh")
     };
     //  Add object to Rend3 system
-    profiling::scope!("Add object");
-    renderer.add_object(Object {
+    profiling::scope!("Build object");
+    Object {
         mesh_kind: rend3::types::ObjectMeshKind::Static(mesh_handle),
         material,
         transform: Mat4::from_scale_rotation_translation(Vec3::ONE, rot, pos),
-    })
+    }
+    ////rederer.add_object(object)
 }
 
 /// Very simple texture, but a bit of shinyness.
