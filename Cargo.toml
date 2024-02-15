@@ -36,7 +36,7 @@ obj = "0.10.2"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 generic-array = "0.14.4"
 log = "0.4.14"
-simplelog = "*"
+####simplelog = "*"
 anyhow = "1.0"
 indoc = "1.0"
 cfg-if = "1.0"
