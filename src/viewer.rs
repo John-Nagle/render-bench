@@ -316,6 +316,8 @@ impl SceneViewer {
             env!("CARGO_MANIFEST_DIR").to_owned() + CITY_TEXTURES_DIR,
             CITY_TEXTURES.to_vec(),
         );
+        
+        println!("Backend: {:?}   Device: {:?}   Profile: {:?}", desired_backend, desired_device_name, desired_mode);
 
         Self {
             absolute_mouse,
