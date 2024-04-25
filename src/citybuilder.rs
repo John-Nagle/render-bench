@@ -128,7 +128,7 @@ impl CityBuilder {
         let city_textures = CityTextures::new_from_map(&renderer, &state.lock().unwrap().textures);
 
         //  Make ground plane
-        const WORLD_SIZE: f32 = 256.0; // one SL region size
+        const WORLD_SIZE: f32 = 1000.0; 
         let _ground_handle = solids::create_simple_block(
             &renderer,
             Vec3::new(WORLD_SIZE, 0.5, WORLD_SIZE), // Ground object
@@ -167,7 +167,7 @@ impl CityBuilder {
             upper_stories,
             upper_stories,
         ];
-        const BLDG_ROWS: usize = 25;
+        const BLDG_ROWS: usize = 50;
         //  Draw first building rows once. Draw others and keep redrawing them.
         println!("Adding permanent buildings.");
         let permanent_buildings = draw_building_grid(
