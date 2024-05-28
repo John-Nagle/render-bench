@@ -42,7 +42,6 @@ rust-embed = { version = "6", features = ["debug-embed"]}
 winit = "0.29"
 #   End of Rend3 compatibilty section.
 #### web-sys = "0.3.61"
-wgpu = { git = "https://github.com/John-Nagle/wgpu.git"}
 
 
 rustc-hash = "1"
@@ -66,10 +65,7 @@ indoc = "1.0"
 cfg-if = "1.0"
 
 [workspace.dependencies]
-wgpu = { git = "https://github.com/John-Nagle/wgpu.git"}
-
-[patch."https://github.com/BVE-Reborn/rend3.git"]
-wgpu = { git = "https://github.com/John-Nagle/wgpu.git"}
+wgpu = "0.20"
 
 [patch.crates-io]
 wgpu = { git = "https://github.com/John-Nagle/wgpu.git"}
