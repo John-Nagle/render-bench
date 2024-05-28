@@ -27,7 +27,7 @@ rend3-routine = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3
 egui-winit = { version = "0.26", default-features = false, features = ["links", "wayland"] }
 
 #   Try to get rid of this. It's only used for one texture enum.	
-wgpu = "0.19"
+## wgpu = "0.19"
 # Importing png's
 image = { version = "0.24.3", default-features = false, features = ["png", "jpeg"] }
 # Portable implementation of Instant.
@@ -42,7 +42,7 @@ rust-embed = { version = "6", features = ["debug-embed"]}
 winit = "0.29"
 #   End of Rend3 compatibilty section.
 #### web-sys = "0.3.61"
-
+wgpu = { git = "https://github.com/John-Nagle/wgpu.git"}
 
 
 rustc-hash = "1"
