@@ -1,6 +1,6 @@
 [package]
 name = "render-bench"
-version = "0.3.0"
+version = "0.6.1"
 authors = ["John Nagle <nagle@animats.com>"]
 edition = "2021"
 
@@ -16,28 +16,30 @@ pico-args = "0.4"
 pollster = "0.2.4"
 profiling = { version = "1", default-features = false }
 
-#   Compatible with Rend3 0.3.0's Cargo.toml file as of 2023-03-09.
+#   Compatible with Rend3 0.3.0's Cargo.toml file as of 2024-04.-2
 #   Must match libscene and libdialog.
-rend3 = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "4d10795" }
-rend3-egui = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "4d10795" }
-rend3-framework = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "4d10795" }
-rend3-routine = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "4d10795" }
+#   Currently: arcanized form from March 2024
+rend3 = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
+rend3-egui = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
+rend3-framework = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
+rend3-routine = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
 # Winit integration with egui (turn off the clipboard feature)
-egui-winit = { version = "0.21", default-features = false, features = ["links", "wayland"] }
+egui-winit = { version = "0.26", default-features = false, features = ["links", "wayland"] }
+
 #   Try to get rid of this. It's only used for one texture enum.	
-wgpu = "0.15"
+wgpu = "0.19"
 # Importing png's
 image = { version = "0.24.3", default-features = false, features = ["png", "jpeg"] }
 # Portable implementation of Instant.
-instant = { version = "0.1", unix = ["wasm-bindgen"] }
-egui = "0.21.0"
-glam = { version = "0.22", features = ["bytemuck", "serde"]}
+####instant = { version = "0.1", unix = ["wasm-bindgen"] }
+egui = "^0.26"
+glam = { version = "0.25", features = ["bytemuck", "serde"]}
 #   Embedding shaders. This forces shaders to be compiled into the executable
 #   rather than loaded at run time. That's because rust-embed won't work cross platoform
 #   where source and target file systems are different. Version must match that used in rend3 so 
 #   that feature merging takes place.
 rust-embed = { version = "6", features = ["debug-embed"]}
-winit = "0.28"
+winit = "0.29"
 #   End of Rend3 compatibilty section.
 #### web-sys = "0.3.61"
 
@@ -45,9 +47,9 @@ winit = "0.28"
 
 rustc-hash = "1"
 smallvec = "1"
-tracy-client = {version = "0.12", optional = true }
+tracy-client = {version = "0.16", optional = true }
 #### wgpu-profiler = "0.8.0"
-wgpu-profiler = "0.11.0"
+wgpu-profiler = "0.16.0"
 
 #   Others
 argparse = "0.2.2"
@@ -57,8 +59,17 @@ tracing = { version = "0.1", default-features = false, features = ["std"] }
 sha3 = "0.9.1"
 generic-array = "0.14.4"
 log = "0.4.14"
-simplelog = "0.10.0"
+## simplelog = "0.10.0"
+simplelog = { version = "*", default-features = false }
 anyhow = "1.0"
 indoc = "1.0"
 cfg-if = "1.0"
 
+[patch.crates-io]
+wgpu = { git = "https://github.com/John-Nagle/wgpu.git"}
+
+rend3 = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
+rend3-egui = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
+rend3-framework = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
+rend3-routine = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
+range-alloc = { git = "https://github.com/gfx-rs/range-alloc.git" }

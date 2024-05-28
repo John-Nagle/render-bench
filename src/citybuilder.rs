@@ -107,7 +107,7 @@ impl CityBuilder {
     }
 
     /// Pre-spawn initialization
-    fn init(&mut self, _renderer: &Arc<Renderer>) {
+    fn init(&mut self, _renderer: &Renderer) {
         println!("Loading texture files.");
         //  Load all the textures
         self.state.lock().unwrap().textures =
@@ -122,6 +122,8 @@ impl CityBuilder {
         _id: usize,
         stop_flag: Arc<AtomicBool>,
     ) {
+        profiling::register_thread!();
+        profiling::scope!("Add content");
         //  Convert all the textures from RGBA to texture handles.
         let city_textures = CityTextures::new_from_map(&renderer, &state.lock().unwrap().textures);
 
