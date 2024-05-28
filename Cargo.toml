@@ -65,6 +65,12 @@ anyhow = "1.0"
 indoc = "1.0"
 cfg-if = "1.0"
 
+[workspace.dependencies]
+wgpu = { git = "https://github.com/John-Nagle/wgpu.git"}
+
+[patch."https://github.com/BVE-Reborn/rend3.git"]
+wgpu = { git = "https://github.com/John-Nagle/wgpu.git"}
+
 [patch.crates-io]
 wgpu = { git = "https://github.com/John-Nagle/wgpu.git"}
 
