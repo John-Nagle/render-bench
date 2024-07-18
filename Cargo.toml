@@ -16,13 +16,11 @@ pico-args = "0.4"
 pollster = "0.2.4"
 profiling = { version = "1", default-features = false }
 
-#   Compatible with Rend3 0.3.0's Cargo.toml file as of 2024-04.-2
-#   Must match libscene and libdialog.
-#   Currently: arcanized form from March 2024
-rend3 = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
-rend3-egui = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
-rend3-framework = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
-rend3-routine = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
+#   Now using Rend3-hp.
+rend3 = { version = "^0.20.0", git = 'https://github.com/John-Nagle/rend3-hp' }
+rend3-egui = { version = "^0.20.0", git = 'https://github.com/John-Nagle/rend3-hp' }
+rend3-framework = { version = "^0.20.0", git = 'https://github.com/John-Nagle/rend3-hp' }
+rend3-routine = { version = "^0.20.0", git = 'https://github.com/John-Nagle/rend3-hp' }
 # Winit integration with egui (turn off the clipboard feature)
 egui-winit = { version = "0.26", default-features = false, features = ["links", "wayland"] }
 
@@ -30,9 +28,7 @@ egui-winit = { version = "0.26", default-features = false, features = ["links", 
 ## wgpu = "0.19"
 # Importing png's
 image = { version = "0.24.3", default-features = false, features = ["png", "jpeg"] }
-# Portable implementation of Instant.
-####instant = { version = "0.1", unix = ["wasm-bindgen"] }
-egui = "^0.26"
+
 glam = { version = "0.25", features = ["bytemuck", "serde"]}
 #   Embedding shaders. This forces shaders to be compiled into the executable
 #   rather than loaded at run time. That's because rust-embed won't work cross platoform
@@ -48,7 +44,7 @@ rustc-hash = "1"
 smallvec = "1"
 tracy-client = {version = "0.16", optional = true }
 #### wgpu-profiler = "0.8.0"
-wgpu-profiler = "0.16.0"
+wgpu-profiler = "0.17.0"
 
 #   Others
 argparse = "0.2.2"
@@ -65,13 +61,13 @@ indoc = "1.0"
 cfg-if = "1.0"
 
 [workspace.dependencies]
-wgpu = "0.19.0"
+wgpu = "0.20"
 
 [patch.crates-io]
-wgpu = { git = "https://github.com/John-Nagle/wgpu.git"}
+# wgpu = { git = "https://github.com/John-Nagle/wgpu.git"}
 
-rend3 = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
-rend3-egui = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
-rend3-framework = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
-rend3-routine = { version = "^0.3.0", git = 'https://github.com/BVE-Reborn/rend3.git', rev = "d088a84" }
+rend3 = { version = "^0.20.0", git = 'https://github.com/John-Nagle/rend3-hp' }
+rend3-egui = { version = "^0.20.0", git = 'https://github.com/John-Nagle/rend3-hp' }
+rend3-framework = { version = "^0.20.0", git = 'https://github.com/John-Nagle/rend3-hp' }
+rend3-routine = { version = "^0.20.0", git = 'https://github.com/John-Nagle/rend3-hp' }
 range-alloc = { git = "https://github.com/gfx-rs/range-alloc.git" }
