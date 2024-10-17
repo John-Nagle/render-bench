@@ -23,7 +23,7 @@ use std::{collections::HashMap, hash::BuildHasher, path::Path, sync::Arc, time::
 use rend3::util::typedefs::RendererStatistics;
 use winit::{
     event::{DeviceEvent, ElementState, Event, MouseButton, WindowEvent, KeyEvent},
-    window::{Fullscreen, WindowBuilder},
+    window::{Fullscreen, WindowAttributes},
     keyboard::{KeyCode},
 };
 
@@ -438,7 +438,7 @@ impl rend3_framework::App for SceneViewer {
     }
 
             
-    fn handle_redraw(&mut self, context: rend3_framework::RedrawContext<'_, ()>) {
+    fn handle_redraw(&mut self, context: rend3_framework::RedrawContext<'_>) {
         profiling::scope!("RedrawRequested");
         //  Statistics
         let now = Instant::now();
@@ -688,7 +688,7 @@ impl rend3_framework::App for SceneViewer {
 impl SceneViewer {
     /// Handle movement from key presses.
     /// Follows how SceneViewer example does it.
-    fn handle_button(&mut self, context: &rend3_framework::RedrawContext<'_, ()>, delta_time: Duration) {              
+    fn handle_button(&mut self, context: &rend3_framework::RedrawContext<'_>, delta_time: Duration) {              
         //  Keyboard processing
         let rotation = Mat3A::from_euler(
             glam::EulerRot::XYZ,
@@ -759,12 +759,12 @@ pub fn viewer() {
 
     let app = SceneViewer::new();
 
-    let mut builder = WindowBuilder::new()
+    let mut window_attributes = WindowAttributes::default()
         .with_title("render-bench")
         .with_maximized(true);
     if app.fullscreen {
-        builder = builder.with_fullscreen(Some(Fullscreen::Borderless(None)));
+        window_attributes = window_attributes.with_fullscreen(Some(Fullscreen::Borderless(None)));
     }
 
-    rend3_framework::start(app, builder);
+    rend3_framework::start(app, window_attributes);
 }
