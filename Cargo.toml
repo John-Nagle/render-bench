@@ -44,7 +44,7 @@ rustc-hash = "1"
 smallvec = "1"
 tracy-client = {version = "0.17", optional = true }
 #### wgpu-profiler = "0.8.0"
-wgpu-profiler = "0.18"
+wgpu-profiler = "0.19"
 
 #   Others
 argparse = "0.2.2"
@@ -62,19 +62,3 @@ cfg-if = "1.0"
 
 [workspace.dependencies]
 wgpu = "23"
-
-[patch.crates-io]
-# wgpu = { git = "https://github.com/John-Nagle/wgpu.git"}
-
-rend3 = { version = "^0.23.0", git = 'https://github.com/John-Nagle/rend3-hp', branch = "wgpu23safe" }
-rend3-egui = { version = "0.23.0", git = 'https://github.com/John-Nagle/rend3-hp', branch = "wgpu23safe" }
-rend3-framework = { version = "0.23.0", git = 'https://github.com/John-Nagle/rend3-hp', branch = "wgpu23safe" }
-rend3-routine = { version = "0.23.0", git = 'https://github.com/John-Nagle/rend3-hp', branch = "wgpu23safe" }
-range-alloc = { git = "https://github.com/gfx-rs/range-alloc.git" }
-
-wgpu-profiler = { version = "^0.18.3", git = 'https://github.com/John-Nagle/wgpu-profiler' }
-
-egui = { version = "0.29.1", git = 'https://github.com/emilk/egui.git'}
-egui-wgpu = { version = "0.29.1", git = 'https://github.com/emilk/egui.git'}
-epaint = { version = "0.29.1", git = 'https://github.com/emilk/egui.git' }
-emath = { version = "0.29.1", git = 'git+https://github.com/emilk/egui.git' }
