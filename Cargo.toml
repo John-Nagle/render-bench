@@ -8,6 +8,10 @@ edition = "2021"
 #   Feature "tracy" enables profiing with Tracy
 tracy = ["tracy-client", "profiling/profile-with-tracy"]
 
+[profile.release]
+debug = true
+lto = "thin"
+
 [dependencies]
 #   Rendering-related
 env_logger = { version = "0.9", default-features = false, features = ["termcolor", "atty"] }
